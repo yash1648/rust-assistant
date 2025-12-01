@@ -17,7 +17,7 @@ pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     }
 
     let request_body = json!({
-        "model": "gemma3",  // Change to your model name if different
+        "model": "phi:2.7b",  // Change to your model name if different
         "messages": messages,
         "stream": false,
     });
