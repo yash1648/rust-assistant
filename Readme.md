@@ -1,4 +1,4 @@
-# 🎙️ Piper Female — Voice Assistant
+# 🎙️ RustAssistant
 
 [![Rust Version](https://img.shields.io/badge/rust-1.80%2B-orange)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#license)
