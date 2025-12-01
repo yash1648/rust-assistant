@@ -1,5 +1,5 @@
 // src/tts/voice.rs
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Voice {
     pub id: &'static str,
     pub model_url: &'static str,
