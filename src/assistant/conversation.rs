@@ -3,6 +3,19 @@ use crate::stt;
 use crate::tts;
 use crate::assistant::llm;
 use std::path::PathBuf;
+use std::fs;
+use anyhow::Context;
+pub fn models_dir() -> PathBuf {
+    PathBuf::from("./records")
+}
+
+fn ensure_records_dir() -> Result<()> {
+    let dir = models_dir();
+    if !dir.exists() {
+        fs::create_dir_all(&dir).context("creating records directory for the temp stt and tts")?;
+    }
+    Ok(())
+}
 
 pub struct Assistant {
     conversation_history: Vec<Message>,
@@ -31,7 +44,7 @@ impl Assistant {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        println!("🤖 AI Assistant started (Gemma 3.2 + Piper TTS)");
+        println!("🤖 AI Assistant started (Phi 2.7 + Piper TTS)");
         println!("Say 'exit' to quit.\n");
 
         loop {
@@ -53,7 +66,7 @@ impl Assistant {
             });
 
             // Step 3: Get AI response from Ollama Gemma 3.2
-            println!("🧠 Thinking with Gemma 3.2...");
+            println!("🧠 Thinking with phi2.7...");
             let response = llm::call_ollama_api(&self.conversation_history).await?;
             println!("🤖 Assistant: {}\n", response);
 
@@ -74,19 +87,21 @@ impl Assistant {
     }
 
     fn listen_to_user(&self) -> Result<String> {
-        stt::recorder::record_to_wav("user_input.wav")?;
+        ensure_records_dir();
+
+        stt::recorder::record_to_wav("records/user_input.wav")?;
         
         let text = stt::transcriber::transcribe_with_whisper(
             "./repos/whisper.cpp",
             "models/ggml-base.en.bin",
-            "user_input.wav",
+            "records/user_input.wav",
         )?;
 
         Ok(text)
     }
 
     fn speak_response(&self, text: &str) -> Result<()> {
-        let output_wav = PathBuf::from("assistant_response.wav");
+        let output_wav = PathBuf::from("records/assistant_response.wav");
         
         tts::synthesize_with_piper(&self.voice_model, text, &output_wav)?;
         tts::play_wav(&output_wav)?;

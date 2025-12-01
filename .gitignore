@@ -6,3 +6,5 @@ repos
 record.*
 user_input.*
 assistant_response.*
+.idea
+records
