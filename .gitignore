@@ -8,3 +8,18 @@ user_input.*
 assistant_response.*
 .idea
 records
+# Rust / Cargo
+target/
+**/*.rs.bk
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Not deployable
+src/assistant/streaming.rs

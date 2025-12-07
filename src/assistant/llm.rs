@@ -17,13 +17,13 @@ pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     }
 
     let request_body = json!({
-        "model": "phi:2.7b",  // Change to your model name if different
+        "model": "lucy:latest",  // Change to your model name if different
         "messages": messages,
         "stream": false,
     });
 
     let response = client
-        .post("http://172.22.32.1:11434/api/chat")
+        .post("http://172.30.176.1:11434/api/chat")
         .json(&request_body)
         .send()
         .await

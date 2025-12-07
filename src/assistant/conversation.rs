@@ -81,6 +81,8 @@ impl Assistant {
             self.speak_response(&response)?;
             
             println!("---\n");
+
+
         }
 
         Ok(())
@@ -108,4 +110,19 @@ impl Assistant {
         
         Ok(())
     }
+
+  fn cleanup_temp_files(&self) -> Result<()> {
+    let dir = models_dir();
+
+    if dir.exists() {
+        fs::remove_dir_all(&dir)
+            .with_context(|| format!("Failed cleaning temp directory {:?}", dir))?;
+    }
+
+    fs::create_dir_all(&dir)
+        .with_context(|| format!("Failed recreating temp directory {:?}", dir))?;
+
+    Ok(())
+    }
+
 }
