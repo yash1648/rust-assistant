@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
 use serde_json::json;
-use super::conversation::Message;
+use crate::assistant::config::get_ollama_config;
 
+use super::conversation::Message;
 /// Call Ollama with Gemma 3.2 model
 pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     let client = reqwest::Client::new();
-
+    let cfg = get_ollama_config()?;
     // Build messages for Ollama
     let mut messages = vec![];
 
@@ -17,13 +18,13 @@ pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     }
 
     let request_body = json!({
-        "model": "lucy:latest",  // Change to your model name if different
+        "model": cfg.model,  // Change to your model name if different
         "messages": messages,
         "stream": false,
     });
-
+    let url = format!("http://{}/api/chat", cfg.server);
     let response = client
-        .post("http://172.30.176.1:11434/api/chat")
+        .post(url)
         .json(&request_body)
         .send()
         .await

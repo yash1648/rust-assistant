@@ -5,6 +5,7 @@ use crate::assistant::llm;
 use std::path::PathBuf;
 use std::fs;
 use anyhow::Context;
+use crate::assistant::config::load_or_create_config;
 pub fn models_dir() -> PathBuf {
     PathBuf::from("./records")
 }
@@ -31,6 +32,7 @@ pub struct Message {
 impl Assistant {
     pub fn new() -> Result<Self> {
         // Download voice model on startup
+        load_or_create_config()?;
         println!("🎧 Initializing voice...");
         let voice = &tts::voices()[0];
         let voice_model = tts::ensure_voice_downloaded(&voice)?;
@@ -44,7 +46,7 @@ impl Assistant {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        println!("🤖 AI Assistant started (Phi 2.7 + Piper TTS)");
+        println!("🤖 AI Assistant started (Phi 2.7 + Piper TTS)");      
         println!("Say 'exit' to quit.\n");
 
         loop {

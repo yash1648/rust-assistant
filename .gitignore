@@ -23,3 +23,5 @@ Thumbs.db
 
 # Not deployable
 src/assistant/streaming.rs
+.env
+ollama_config.json
