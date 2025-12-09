@@ -25,3 +25,7 @@ Thumbs.db
 src/assistant/streaming.rs
 .env
 ollama_config.json
+
+# python 
+src/py-engine/venv
+src/py-engine/__pycache__
