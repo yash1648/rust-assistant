@@ -27,5 +27,6 @@ src/assistant/streaming.rs
 ollama_config.json
 
 # python 
-src/py-engine/venv
-src/py-engine/__pycache__
+venv
+kokoro/*
+__pycache__
