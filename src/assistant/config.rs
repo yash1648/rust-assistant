@@ -1,53 +1,33 @@
-use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::{self, Write};
-use std::path::Path;
+use anyhow::Result;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OllamaConfig {
-    pub server: String, // e.g. "172.30.176.1:11434"
-    pub model: String,  // e.g. "lucy:latest"
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaConfig { pub server: String, pub model: String }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssistantConfig { pub ollama: OllamaConfig }
+
+pub fn default_config() -> AssistantConfig {
+    AssistantConfig { ollama: get_ollama_config().unwrap_or(OllamaConfig {
+        server: "localhost:11434".into(),
+        model: "phi-2.7".into(),
+    }) }
 }
 
-pub fn load_or_create_config() -> Result<OllamaConfig> {
-    let path = "ollama_config.json";
-
-    // If config exists, just load it
-    if Path::new(path).exists() {
-        let data = fs::read_to_string(path)
-            .with_context(|| format!("Failed to read config file: {}", path))?;
-        let cfg: OllamaConfig =
-            serde_json::from_str(&data).context("Failed to parse config JSON")?;
-        return Ok(cfg);
+pub fn load_or_create_config() -> Result<AssistantConfig> {
+    let path = "Assistant.toml";
+    if std::path::Path::new(path).exists() {
+        let s = std::fs::read_to_string(path)?;
+        let cfg: AssistantConfig = toml::from_str(&s)?;
+        Ok(cfg)
+    } else {
+        let cfg = default_config();
+        let s = toml::to_string_pretty(&cfg)?;
+        std::fs::write(path, s)?;
+        Ok(cfg)
     }
-
-    // Otherwise, ask the user once and create it
-    println!("No config found. Let's set up your Ollama connection.");
-
-    // Ask for server
-    print!("Enter Ollama server IP:PORT (example: 172.30.176.1:11434): ");
-    io::stdout().flush().unwrap();
-    let mut server = String::new();
-    io::stdin().read_line(&mut server).unwrap();
-    let server = server.trim().to_string();
-
-    // Ask for model
-    print!("Enter model name (example: lucy:latest): ");
-    io::stdout().flush().unwrap();
-    let mut model = String::new();
-    io::stdin().read_line(&mut model).unwrap();
-    let model = model.trim().to_string();
-
-    let cfg = OllamaConfig { server, model };
-
-    let json = serde_json::to_string_pretty(&cfg).context("Failed to serialize config")?;
-    fs::write(path, json).with_context(|| format!("Failed to write config file: {}", path))?;
-
-    println!("Config saved to {}", path);
-
-    Ok(cfg)
 }
+
 pub fn get_ollama_config() -> Result<OllamaConfig> {
-    load_or_create_config()
+    Ok(load_or_create_config()?.ollama)
 }
