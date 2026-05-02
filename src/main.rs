@@ -40,11 +40,13 @@ async fn main() -> Result<()> {
             }
             println!("Generated completions for {:?}", shell);
         }
+        Commands::Env => {
+            assistant::config::print_env_help();
+        }
         Commands::GenerateConfig => {
-            let default = assistant::config::default_config();
-            let toml = toml::to_string_pretty(&default)?;
-            std::fs::write("Assistant.toml", toml)?;
-            println!("Wrote Assistant.toml");
+            let config = assistant::config::generate_default_toml();
+            std::fs::write("Assistant.toml", config)?;
+            println!("✅ Generated Assistant.toml");
         }
     }
 

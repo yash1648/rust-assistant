@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use serde_json::json;
-use crate::assistant::config::get_ollama_config;
+use crate::assistant::config::Config;
 use super::conversation::Message;
 
 pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     let client = reqwest::Client::new();
-    let cfg = get_ollama_config()?;
+    let config = Config::from_toml();
 
     let messages: Vec<serde_json::Value> = history
         .iter()
@@ -13,12 +13,12 @@ pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
         .collect();
 
     let request_body = json!({
-        "model": cfg.model,
+        "model": config.ollama_model,
         "messages": messages,
         "stream": false,
     });
 
-    let url = format!("http://{}/api/chat", cfg.server);
+    let url = format!("http://{}/api/chat", config.ollama_server);
     let resp = client
         .post(url)
         .json(&request_body)

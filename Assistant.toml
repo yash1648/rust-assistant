@@ -1,3 +1,14 @@
+# Assistant Configuration
+# Environment variables override these settings
+
 [ollama]
 server = "127.0.0.1:11434"
-model = "gemma3:latest"
+model = "dolphin-phi:latest"
+
+[tts]
+voice = "af_heart"
+model_path = "models/kokoro"
+voices_path = "models/kokoro/voices"
+
+[stt]
+model_path = "models/ggml-base.en.bin"

@@ -11,6 +11,6 @@ pub fn print_colored(msg: &str, color: Color) {
 }
 
 pub fn success(msg: &str) { print_colored(msg, Color::Green) }
-pub fn warn(msg: &str) { print_colored(msg, Color::Yellow) }
+#[allow(dead_code)]
 pub fn error(msg: &str) { print_colored(msg, Color::Red) }
 pub fn info(msg: &str) { print_colored(msg, Color::Cyan) }

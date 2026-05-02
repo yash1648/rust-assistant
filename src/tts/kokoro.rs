@@ -1,94 +1,66 @@
 use anyhow::Result;
-use pyo3::prelude::*;
-use pyo3::types::PyModule;
+use any_tts::{load_model, AudioSamples, ModelType, SynthesisRequest, TtsConfig};
 use rodio::{OutputStream, Sink, buffer::SamplesBuffer};
+use std::path::Path;
 
-/// Python-backed Kokoro TTS (PyO3)
+/// Pure Rust Kokoro TTS using any-tts
 pub struct KokoroTts {
-    engine: PyObject, // Py<PyAny>
+    model: Box<dyn any_tts::TtsModel + Send + Sync>,
+    voice: String,
 }
 
 impl KokoroTts {
-    /// Initialize Python + KokoroEngine(speaker=...)
-    pub fn new(speaker: &str) -> Result<Self> {
-        Self::setup_pythonpath()?;
+    /// Initialize Kokoro TTS engine with explicit paths
+    pub fn new(voice: &str, model_path: &Path, voices_path: &Path) -> Result<Self> {
+        println!("🎤 Loading Kokoro TTS");
+        println!("   Voice: {}", voice);
+        println!("   Model: {:?}", model_path);
+        println!("   Voices: {:?}", voices_path);
 
-        Python::with_gil(|py| {
-            // import python module kokoro_engine (your python file)
-            let module = PyModule::import_bound(py, "kokoro-engine")?;
-            let class = module.getattr("KokoroEngine")?;
+        let model = load_model(
+            TtsConfig::new(ModelType::Kokoro)
+                .with_model_path(model_path.to_string_lossy().as_ref())
+                .with_voices_dir(voices_path.to_string_lossy().as_ref()),
+        )
+        .map_err(|e| anyhow::anyhow!("failed to load Kokoro model: {}", e))?;
 
-            // KokoroEngine(speaker=...)
-            let instance = class.call1((speaker,))?;
-
-            Ok(Self {
-                engine: instance.unbind(),
-            })
-        })
+        Ok(Self { model, voice: voice.to_string() })
     }
 
     /// Generate speech and play it synchronously
     pub fn speak_and_play_blocking(&self, text: &str) -> Result<()> {
-        let (pcm, sample_rate) = self.speak(text)?;
-        self.play_pcm_blocking(pcm, sample_rate)
+        let audio = self.synthesize(text)?;
+        self.play_audio_blocking(audio)
     }
 
-    /// Call Python's engine.speak(text) -> (Vec<i16>, u32)
-    fn speak(&self, text: &str) -> Result<(Vec<i16>, u32)> {
-        Python::with_gil(|py| {
-            let engine = self.engine.bind(py);
-            let result = engine.call_method1("speak", (text,))?;
-            let (pcm, sample_rate): (Vec<i16>, u32) = result.extract()?;
-            Ok((pcm, sample_rate))
-        })
+    /// Synthesize text to audio
+    fn synthesize(&self, text: &str) -> Result<AudioSamples> {
+        let request = SynthesisRequest::new(text)
+            .with_voice(&self.voice)
+            .with_language("en");
+
+        let audio = self.model
+            .synthesize(&request)
+            .map_err(|e| anyhow::anyhow!("synthesis failed: {}", e))?;
+
+        Ok(audio)
     }
 
-    /// Play mono i16 PCM samples synchronously
-    fn play_pcm_blocking(&self, pcm: Vec<i16>, sample_rate: u32) -> Result<()> {
+    /// Play audio samples synchronously
+    fn play_audio_blocking(&self, audio: AudioSamples) -> Result<()> {
         let (_stream, stream_handle) = OutputStream::try_default()?;
         let sink = Sink::try_new(&stream_handle)?;
 
-        let source = SamplesBuffer::new(1, sample_rate, pcm);
+        // Convert f32 to i16
+        let samples_i16: Vec<i16> = audio.samples
+            .iter()
+            .map(|&s| (s * 32767.0).clamp(-32768.0, 32767.0) as i16)
+            .collect();
+
+        let source = SamplesBuffer::new(1, audio.sample_rate as u32, samples_i16);
         sink.append(source);
-        sink.sleep_until_end(); // block until done
-        Ok(())
-    }
+        sink.sleep_until_end();
 
-    /// Make sure Python can find kokoro_engine.py
-    fn setup_pythonpath() -> Result<()> {
-        use std::env;
-        use std::path::PathBuf;
-
-        let py_dir: PathBuf = env::current_dir()?.join("src/pyengine");
-        let py_dir_str = py_dir.to_string_lossy().into_owned();
-
-        let sep = if cfg!(windows) { ';' } else { ':' };
-        let current = env::var("PYTHONPATH").unwrap_or_default();
-
-        let mut parts: Vec<String> = if current.is_empty() {
-            Vec::new()
-        } else {
-            current
-                .split(sep)
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect()
-        };
-
-        if !parts.iter().any(|p| p == &py_dir_str) {
-            parts.insert(0, py_dir_str);
-        }
-
-        let cwd_str = env::current_dir()?.to_string_lossy().into_owned();
-        if !parts.iter().any(|p| p == &cwd_str) {
-            parts.push(cwd_str);
-        }
-
-        let new_val = parts.join(&sep.to_string());
-        // in your setup this may be unsafe; wrap if needed
-        unsafe{
-        std::env::set_var("PYTHONPATH", &new_val);
-        }
         Ok(())
     }
 }

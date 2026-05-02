@@ -21,7 +21,12 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Run the voice assistant
     Run,
+    /// Generate shell completions
     GenerateCompletion { #[arg(value_enum)] shell: ShellKind },
+    /// Generate default Assistant.toml
     GenerateConfig,
+    /// Show environment variables
+    Env,
 }
