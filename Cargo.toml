@@ -48,6 +48,8 @@ tempfile = "3"
 kittentts = { version = "0.4", features = ["espeak"] }
 # HTTP server for API mode
 axum = { version = "0.8", optional = true }
+# .env file auto-loading
+dotenvy = "0.15"
 
 [features]
 default = []

@@ -15,6 +15,7 @@ pub struct Assistant {
     conversation_history: Vec<Message>,
     tts_engine: tts::TtsEngine,
     transcriber: stt::transcriber::WhisperTranscriber,
+    vad_config: crate::stt::vad::VadConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -44,10 +45,17 @@ impl Assistant {
         // Ensure records directory exists
         std::fs::create_dir_all("records").ok();
 
+        let vad_config = crate::stt::vad::VadConfig {
+            threshold: config.vad_threshold,
+            max_silent_frames: config.vad_silence_ms / 20, // 20ms per frame
+            sample_rate: 16000,
+        };
+
         Ok(Self {
             conversation_history: vec![],
             tts_engine,
             transcriber,
+            vad_config,
         })
     }
 
@@ -95,8 +103,9 @@ impl Assistant {
     }
 
     fn listen_to_user(&mut self) -> Result<String> {
-        // Use in-memory recording for zero disk I/O
-        let buffer = stt::recorder::record_to_buffer()?;
+        // Use VAD-powered in-memory recording (auto-stops on silence)
+        // Falls back to Enter key if needed
+        let buffer = stt::recorder::record_to_buffer_vad(self.vad_config.clone())?;
         // Transcribe directly from the buffer
         let text = self.transcriber.transcribe_buffer(buffer)?;
         Ok(text)

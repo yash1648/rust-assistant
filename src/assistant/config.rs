@@ -22,6 +22,13 @@ pub struct Config {
 
     #[serde(default = "default_stt_model_path")]
     pub stt_model_path: String,
+
+    // VAD settings
+    #[serde(default = "default_vad_threshold")]
+    pub vad_threshold: f32,
+
+    #[serde(default = "default_vad_silence_ms")]
+    pub vad_silence_ms: u64,
 }
 
 pub fn default_ollama_server() -> String { "127.0.0.1:11434".into() }
@@ -30,6 +37,8 @@ pub fn default_tts_voice() -> String { "Jasper".into() }
 pub fn default_tts_model_dir() -> Option<String> { None }
 pub fn default_tts_speed() -> f32 { 1.0 }
 pub fn default_stt_model_path() -> String { "models/ggml-base.en.bin".into() }
+pub fn default_vad_threshold() -> f32 { 0.02 }
+pub fn default_vad_silence_ms() -> u64 { 800 }
 
 impl Default for Config {
     fn default() -> Self {
@@ -51,6 +60,8 @@ impl Config {
                     tts_model_dir: toml.tts.as_ref().and_then(|t| t.model_dir.clone()).or_else(default_tts_model_dir),
                     tts_speed: toml.tts.as_ref().and_then(|t| t.speed).unwrap_or_else(default_tts_speed),
                     stt_model_path: toml.stt.as_ref().and_then(|s| s.model_path.clone()).unwrap_or_else(default_stt_model_path),
+                    vad_threshold: toml.vad.as_ref().and_then(|v| v.threshold).unwrap_or_else(default_vad_threshold),
+                    vad_silence_ms: toml.vad.as_ref().and_then(|v| v.silence_ms).unwrap_or_else(default_vad_silence_ms),
                 },
                 Err(e) => {
                     eprintln!("⚠️  Failed to parse Assistant.toml: {}", e);
@@ -61,6 +72,8 @@ impl Config {
                         tts_model_dir: default_tts_model_dir(),
                         tts_speed: default_tts_speed(),
                         stt_model_path: default_stt_model_path(),
+                        vad_threshold: default_vad_threshold(),
+                        vad_silence_ms: default_vad_silence_ms(),
                     }
                 }
             }
@@ -72,6 +85,8 @@ impl Config {
                 tts_model_dir: default_tts_model_dir(),
                 tts_speed: default_tts_speed(),
                 stt_model_path: default_stt_model_path(),
+                vad_threshold: default_vad_threshold(),
+                vad_silence_ms: default_vad_silence_ms(),
             }
         };
 
@@ -82,6 +97,8 @@ impl Config {
         if let Ok(v) = env::var("TTS_MODEL_DIR") { config.tts_model_dir = Some(v); }
         if let Ok(v) = env::var("TTS_SPEED") { config.tts_speed = v.parse().unwrap_or(1.0); }
         if let Ok(v) = env::var("STT_MODEL_PATH") { config.stt_model_path = v; }
+        if let Ok(v) = env::var("VAD_THRESHOLD") { config.vad_threshold = v.parse().unwrap_or(0.02); }
+        if let Ok(v) = env::var("VAD_SILENCE_MS") { config.vad_silence_ms = v.parse().unwrap_or(800); }
 
         config
     }
@@ -98,6 +115,8 @@ impl Config {
         }
         println!("   TTS Speed: {}x", self.tts_speed);
         println!("   STT Model: {}", self.stt_model_path);
+        println!("   VAD Threshold: {:.3}", self.vad_threshold);
+        println!("   VAD Silence: {}ms", self.vad_silence_ms);
     }
 }
 
@@ -112,6 +131,9 @@ struct TomlConfig {
 
     #[serde(default)]
     stt: Option<SttSection>,
+
+    #[serde(default)]
+    vad: Option<VadSection>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,6 +154,12 @@ struct SttSection {
     model_path: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct VadSection {
+    threshold: Option<f32>,
+    silence_ms: Option<u64>,
+}
+
 /// Environment variable names
 pub mod env_vars {
     pub const OLLAMA_SERVER: &str = "OLLAMA_SERVER";
@@ -140,6 +168,8 @@ pub mod env_vars {
     pub const TTS_MODEL_DIR: &str = "TTS_MODEL_DIR";
     pub const TTS_SPEED: &str = "TTS_SPEED";
     pub const STT_MODEL_PATH: &str = "STT_MODEL_PATH";
+    pub const VAD_THRESHOLD: &str = "VAD_THRESHOLD";
+    pub const VAD_SILENCE_MS: &str = "VAD_SILENCE_MS";
 }
 
 /// Print all supported environment variables
@@ -151,6 +181,8 @@ pub fn print_env_help() {
     println!("   {} - Path to local TTS model directory", env_vars::TTS_MODEL_DIR);
     println!("   {} - TTS speech speed multiplier (0.5-2.0)", env_vars::TTS_SPEED);
     println!("   {} - Path to Whisper STT model", env_vars::STT_MODEL_PATH);
+    println!("   {} - VAD energy threshold (0.0–1.0, default 0.02)", env_vars::VAD_THRESHOLD);
+    println!("   {} - VAD silence timeout in ms (default 800)", env_vars::VAD_SILENCE_MS);
     println!();
 }
 

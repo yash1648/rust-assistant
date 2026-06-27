@@ -21,6 +21,9 @@ fn init_tracing(verbosity: u8) {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Auto-load .env file if it exists (silently ignore if not)
+    dotenvy::dotenv().ok();
+
     let cli = Cli::parse();
     init_tracing(cli.verbose);
 
