@@ -32,3 +32,8 @@ lcov.info
 
 # Logs
 *.log
+
+# Startup Builder memory artifacts (AI-assisted development)
+startup-builder-memory/
+graphify-out/
+.anchored-summary.md
