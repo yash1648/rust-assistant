@@ -1,0 +1,29 @@
+# Cross-platform Rust build configuration
+#
+# To use a faster linker on Linux, install and uncomment one of:
+#   sudo apt install mold          (recommended — fastest)
+#   sudo apt install lld           (good alternative, more widely available)
+#
+# macOS: default linker (zld) is already fast enough.
+# Windows: lld-link comes with LLVM, or use the default MSVC linker.
+
+# ── Linux x86_64 with mold (fastest) ──
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+# ── Linux x86_64 with lld ──
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# ── Windows MSVC with lld-link ──
+# [target.x86_64-pc-windows-msvc]
+# linker = "lld-link"
+
+# ── macOS (Apple Silicon) ──
+# [target.aarch64-apple-darwin]
+# rustflags = []
+
+# ── macOS (Intel) ──
+# [target.x86_64-apple-darwin]
+# rustflags = []
