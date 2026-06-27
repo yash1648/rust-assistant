@@ -13,11 +13,8 @@ impl WhisperTranscriber {
     pub fn new(model_path: &str) -> Result<Self> {
         println!("🧠 Loading Whisper model from: {}", model_path);
 
-        let ctx = WhisperContext::new_with_params(
-            model_path,
-            WhisperContextParameters::default(),
-        )
-        .context("failed to load Whisper model")?;
+        let ctx = WhisperContext::new_with_params(model_path, WhisperContextParameters::default())
+            .context("failed to load Whisper model")?;
 
         Ok(Self { ctx })
     }
@@ -32,8 +29,7 @@ impl WhisperTranscriber {
 
     /// Transcribe audio from an in-memory WAV buffer
     pub fn transcribe_buffer<R: Read>(&mut self, reader: R) -> Result<String> {
-        let reader = WavReader::new(reader)
-            .context("failed to read WAV from buffer")?;
+        let reader = WavReader::new(reader).context("failed to read WAV from buffer")?;
         let samples = Self::process_reader(reader)?;
         self.transcribe_samples(&samples)
     }
@@ -41,10 +37,14 @@ impl WhisperTranscriber {
     /// Common transcription pipeline from raw f32 samples
     fn transcribe_samples(&mut self, samples: &[f32]) -> Result<String> {
         if samples.is_empty() {
-            anyhow::bail!("no audio samples found — speak into the microphone before pressing Enter");
+            anyhow::bail!(
+                "no audio samples found — speak into the microphone before pressing Enter"
+            );
         }
 
-        let mut state = self.ctx.create_state()
+        let mut state = self
+            .ctx
+            .create_state()
             .context("failed to create Whisper state")?;
 
         let mut params = FullParams::new(SamplingStrategy::BeamSearch {
@@ -75,27 +75,26 @@ impl WhisperTranscriber {
     /// Read WAV, resample to 16kHz, mix to mono — returns f32 samples
     fn process_reader<R: Read>(reader: WavReader<R>) -> Result<Vec<f32>> {
         let spec = reader.spec();
-        println!("📼 WAV: {}Hz, {} channels, {} bits",
-            spec.sample_rate, spec.channels, spec.bits_per_sample);
+        println!(
+            "📼 WAV: {}Hz, {} channels, {} bits",
+            spec.sample_rate, spec.channels, spec.bits_per_sample
+        );
 
         let samples: Vec<f32> = match (spec.sample_format, spec.bits_per_sample) {
-            (hound::SampleFormat::Int, 16) => {
-                reader.into_samples::<i16>()
-                    .filter_map(|s| s.ok())
-                    .map(|s| s as f32 / 32768.0)
-                    .collect()
-            }
-            (hound::SampleFormat::Int, 32) => {
-                reader.into_samples::<i32>()
-                    .filter_map(|s| s.ok())
-                    .map(|s| s as f32 / 2147483648.0)
-                    .collect()
-            }
-            (hound::SampleFormat::Float, 32) => {
-                reader.into_samples::<f32>()
-                    .filter_map(|s| s.ok())
-                    .collect()
-            }
+            (hound::SampleFormat::Int, 16) => reader
+                .into_samples::<i16>()
+                .filter_map(|s| s.ok())
+                .map(|s| s as f32 / 32768.0)
+                .collect(),
+            (hound::SampleFormat::Int, 32) => reader
+                .into_samples::<i32>()
+                .filter_map(|s| s.ok())
+                .map(|s| s as f32 / 2147483648.0)
+                .collect(),
+            (hound::SampleFormat::Float, 32) => reader
+                .into_samples::<f32>()
+                .filter_map(|s| s.ok())
+                .collect(),
             _ => anyhow::bail!("unsupported WAV format: {} bits", spec.bits_per_sample),
         };
 
@@ -143,7 +142,8 @@ impl WhisperTranscriber {
 
     /// Mix N-channel audio to mono by averaging all channels
     fn mix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
-        samples.chunks(channels)
+        samples
+            .chunks(channels)
             .map(|chunk| {
                 let sum: f32 = chunk.iter().sum();
                 sum / channels as f32
@@ -176,8 +176,8 @@ mod tests {
         let stereo = vec![0.5, -0.5, 1.0, -1.0];
         let mono = WhisperTranscriber::mix_to_mono(&stereo, 2);
         assert_eq!(mono.len(), 2);
-        assert!((mono[0] - 0.0).abs() < f32::EPSILON);  // (0.5 + -0.5) / 2 = 0
-        assert!((mono[1] - 0.0).abs() < f32::EPSILON);  // (1.0 + -1.0) / 2 = 0
+        assert!((mono[0] - 0.0).abs() < f32::EPSILON); // (0.5 + -0.5) / 2 = 0
+        assert!((mono[1] - 0.0).abs() < f32::EPSILON); // (1.0 + -1.0) / 2 = 0
     }
 
     #[test]
@@ -185,6 +185,6 @@ mod tests {
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let mono = WhisperTranscriber::mix_to_mono(&input, 5);
         assert_eq!(mono.len(), 1);
-        assert!((mono[0] - 3.0).abs() < f32::EPSILON);  // (1+2+3+4+5)/5 = 3
+        assert!((mono[0] - 3.0).abs() < f32::EPSILON); // (1+2+3+4+5)/5 = 3
     }
 }

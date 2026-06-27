@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use anyhow::Result;
-use clap::{Parser, CommandFactory};
+use clap::{CommandFactory, Parser};
 use clap_complete::{generate_to, shells};
 use cpal::traits::{DeviceTrait, HostTrait};
 use tracing_subscriber::{fmt, EnvFilter};
@@ -11,13 +11,17 @@ mod cli;
 use cli::{Cli, Commands, ShellKind};
 
 mod assistant;
+mod error;
 mod stt;
 mod tts;
 mod ui;
-mod error;
 
 fn init_tracing(verbosity: u8) {
-    let level = match verbosity { 0 => "info", 1 => "debug", _ => "trace" };
+    let level = match verbosity {
+        0 => "info",
+        1 => "debug",
+        _ => "trace",
+    };
     let filter = EnvFilter::new(std::env::var("RUST_LOG").unwrap_or_else(|_| level.to_string()));
     fmt().with_env_filter(filter).init();
 }
@@ -35,7 +39,12 @@ async fn main() -> Result<()> {
             let mut assistant = assistant::Assistant::new()?;
             assistant.run().await?;
         }
-        Commands::Setup { whisper_model, skip_whisper, tts_model_dir, force } => {
+        Commands::Setup {
+            whisper_model,
+            skip_whisper,
+            tts_model_dir,
+            force,
+        } => {
             setup(whisper_model, skip_whisper, tts_model_dir, force).await?;
         }
         Commands::Doctor => {
@@ -47,9 +56,15 @@ async fn main() -> Result<()> {
             std::fs::create_dir_all("completions/zsh")?;
             std::fs::create_dir_all("completions/fish")?;
             match shell {
-                ShellKind::Bash => { generate_to(shells::Bash, &mut cmd, "rust-assistant", "completions/bash")?; }
-                ShellKind::Zsh => { generate_to(shells::Zsh, &mut cmd, "rust-assistant", "completions/zsh")?; }
-                ShellKind::Fish => { generate_to(shells::Fish, &mut cmd, "rust-assistant", "completions/fish")?; }
+                ShellKind::Bash => {
+                    generate_to(shells::Bash, &mut cmd, "rust-assistant", "completions/bash")?;
+                }
+                ShellKind::Zsh => {
+                    generate_to(shells::Zsh, &mut cmd, "rust-assistant", "completions/zsh")?;
+                }
+                ShellKind::Fish => {
+                    generate_to(shells::Fish, &mut cmd, "rust-assistant", "completions/fish")?;
+                }
             }
             println!("✅ Generated completions for {:?}", shell);
         }
@@ -73,13 +88,19 @@ async fn setup(
     tts_model_dir: Option<String>,
     force: bool,
 ) -> Result<()> {
-    use std::path::Path;
     use indicatif::ProgressBar;
+    use std::path::Path;
 
     println!("🔧 rust-assistant setup\n");
 
     // Create necessary directories
-    let dirs = ["models", "records", "completions/bash", "completions/zsh", "completions/fish"];
+    let dirs = [
+        "models",
+        "records",
+        "completions/bash",
+        "completions/zsh",
+        "completions/fish",
+    ];
     for dir in &dirs {
         std::fs::create_dir_all(dir)?;
     }
@@ -98,7 +119,8 @@ async fn setup(
                 std::fs::create_dir_all(parent)?;
             }
 
-            let model_name = whisper_path.file_name()
+            let model_name = whisper_path
+                .file_name()
                 .unwrap_or_default()
                 .to_string_lossy();
             let url = format!(
@@ -123,7 +145,11 @@ async fn setup(
             std::fs::write(whisper_path, &bytes)?;
 
             pb.finish_and_clear();
-            println!("✅ Downloaded {} ({} MB)", model_name, bytes.len() / 1024 / 1024);
+            println!(
+                "✅ Downloaded {} ({} MB)",
+                model_name,
+                bytes.len() / 1024 / 1024
+            );
         }
     }
 
@@ -179,28 +205,24 @@ fn doctor() {
     println!("\n🤖 Ollama (local LLM):");
     let config = assistant::config::Config::from_toml();
     match check_ollama(&config) {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(e) => println!("   ❌ {}", e),
     }
 
     // Check audio devices
     println!("\n🎙 Audio system:");
     match cpal::default_host().default_input_device() {
-        Some(dev) => {
-            match dev.name() {
-                Ok(name) => println!("   ✅ Input device: {}", name),
-                Err(_) => println!("   ✅ Input device available"),
-            }
-        }
+        Some(dev) => match dev.name() {
+            Ok(name) => println!("   ✅ Input device: {}", name),
+            Err(_) => println!("   ✅ Input device available"),
+        },
         None => println!("   ❌ No default input device found"),
     }
     match cpal::default_host().default_output_device() {
-        Some(dev) => {
-            match dev.name() {
-                Ok(name) => println!("   ✅ Output device: {}", name),
-                Err(_) => println!("   ✅ Output device available"),
-            }
-        }
+        Some(dev) => match dev.name() {
+            Ok(name) => println!("   ✅ Output device: {}", name),
+            Err(_) => println!("   ✅ Output device available"),
+        },
         None => println!("   ❌ No default output device found"),
     }
 
@@ -219,11 +241,18 @@ fn doctor() {
     let stt_path = std::path::Path::new(&config.stt_model_path);
     if stt_path.exists() {
         match std::fs::metadata(stt_path) {
-            Ok(m) => println!("   ✅ STT model ({}): {} MB", config.stt_model_path, m.len() / 1024 / 1024),
+            Ok(m) => println!(
+                "   ✅ STT model ({}): {} MB",
+                config.stt_model_path,
+                m.len() / 1024 / 1024
+            ),
             Err(e) => println!("   ❌ Cannot read STT model: {}", e),
         }
     } else {
-        println!("   ❌ STT model not found: {} — run: cargo run setup", config.stt_model_path);
+        println!(
+            "   ❌ STT model not found: {} — run: cargo run setup",
+            config.stt_model_path
+        );
     }
 
     match &config.tts_model_dir {
@@ -232,7 +261,10 @@ fn doctor() {
             if path.exists() {
                 println!("   ✅ TTS model directory: {}", dir);
             } else {
-                println!("   ⚠️  TTS model directory '{}' not found (will auto-download)", dir);
+                println!(
+                    "   ⚠️  TTS model directory '{}' not found (will auto-download)",
+                    dir
+                );
             }
         }
         None => {
@@ -246,8 +278,12 @@ fn doctor() {
 /// Check Ollama connectivity (blocking)
 fn check_ollama(config: &assistant::config::Config) -> Result<(), String> {
     let url = format!("http://{}/api/tags", config.ollama_server);
-    let resp = reqwest::blocking::get(&url)
-        .map_err(|e| format!("Cannot connect to Ollama at {}: {}", config.ollama_server, e))?;
+    let resp = reqwest::blocking::get(&url).map_err(|e| {
+        format!(
+            "Cannot connect to Ollama at {}: {}",
+            config.ollama_server, e
+        )
+    })?;
 
     if !resp.status().is_success() {
         return Err(format!("Ollama returned status: {}", resp.status()));
@@ -257,17 +293,20 @@ fn check_ollama(config: &assistant::config::Config) -> Result<(), String> {
 
     if let Ok(body) = resp.json::<serde_json::Value>() {
         if let Some(models) = body["models"].as_array() {
-            let names: Vec<&str> = models.iter()
-                .filter_map(|m| m["name"].as_str())
-                .collect();
+            let names: Vec<&str> = models.iter().filter_map(|m| m["name"].as_str()).collect();
             println!("   📦 Available models: {}", names.join(", "));
             let has_model = models.iter().any(|m| {
-                m["name"].as_str().is_some_and(|n| n.contains(&config.ollama_model))
+                m["name"]
+                    .as_str()
+                    .is_some_and(|n| n.contains(&config.ollama_model))
             });
             if has_model {
                 println!("   ✅ Default model '{}' is available", config.ollama_model);
             } else {
-                println!("   ⚠️  Default model '{}' not found — run: ollama pull {}", config.ollama_model, config.ollama_model);
+                println!(
+                    "   ⚠️  Default model '{}' not found — run: ollama pull {}",
+                    config.ollama_model, config.ollama_model
+                );
             }
         }
     }

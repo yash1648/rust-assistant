@@ -21,17 +21,20 @@
 //! - `error` — Structured error types
 //! - `ui` — Terminal UI helpers (colored output)
 
-pub mod cli;
 pub mod assistant;
+pub mod cli;
+pub mod error;
 pub mod stt;
 pub mod tts;
 pub mod ui;
-pub mod error;
 
 // Re-exports for convenience and testing
-pub use cli::{Cli, Commands, ShellKind};
-pub use assistant::config::{Config, env_vars, generate_default_toml, default_ollama_server, default_tts_voice, default_tts_speed};
+pub use assistant::config::{
+    default_ollama_server, default_tts_speed, default_tts_voice, env_vars, generate_default_toml,
+    Config,
+};
 pub use assistant::conversation::Message;
+pub use cli::{Cli, Commands, ShellKind};
 pub use error::AssistantError;
 pub use stt::audio::AudioConfig;
 

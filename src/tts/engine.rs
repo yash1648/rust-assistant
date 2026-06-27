@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use kittentts::KittenTTS;
-use rodio::{OutputStream, Sink, buffer::SamplesBuffer};
+use rodio::{buffer::SamplesBuffer, OutputStream, Sink};
 use std::path::Path;
 
 /// Pure Rust TTS engine using KittenTTS (ONNX-based, zero system deps)
@@ -60,7 +60,11 @@ impl TtsEngine {
         let npz_path = model_dir.join("voices.npz");
 
         // Prefer int8 quantized model (faster, smaller)
-        let model_path = if int8_path.exists() { int8_path } else { onnx_path };
+        let model_path = if int8_path.exists() {
+            int8_path
+        } else {
+            onnx_path
+        };
 
         if !model_path.exists() {
             anyhow::bail!(
@@ -96,10 +100,9 @@ impl TtsEngine {
 
     /// Play f32 audio samples through the default output device
     fn play_audio(&self, samples: &[f32]) -> Result<()> {
-        let (_stream, stream_handle) = OutputStream::try_default()
-            .context("failed to open audio output stream")?;
-        let sink = Sink::try_new(&stream_handle)
-            .context("failed to create audio sink")?;
+        let (_stream, stream_handle) =
+            OutputStream::try_default().context("failed to open audio output stream")?;
+        let sink = Sink::try_new(&stream_handle).context("failed to create audio sink")?;
 
         let source = SamplesBuffer::new(1, kittentts::SAMPLE_RATE, samples.to_vec());
         sink.append(source);
@@ -117,11 +120,13 @@ impl TtsEngine {
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
-        let mut writer = hound::WavWriter::create(path, spec)
-            .context("failed to create WAV file")?;
+        let mut writer =
+            hound::WavWriter::create(path, spec).context("failed to create WAV file")?;
         for &sample in &samples {
             let clamped = (sample * 32767.0).clamp(-32768.0, 32767.0) as i16;
-            writer.write_sample(clamped).context("failed to write WAV sample")?;
+            writer
+                .write_sample(clamped)
+                .context("failed to write WAV sample")?;
         }
         writer.finalize().context("failed to finalize WAV file")?;
         Ok(())
@@ -142,7 +147,10 @@ mod tests {
         // This test requires a model to be downloaded — skip if not available
         let tts = TtsEngine::new("Jasper", None, 1.0);
         if let Ok(engine) = tts {
-            assert!(!engine.available_voices().is_empty(), "should have at least one voice");
+            assert!(
+                !engine.available_voices().is_empty(),
+                "should have at least one voice"
+            );
         }
         // If download fails (no network), test is skipped gracefully
     }
@@ -156,7 +164,11 @@ mod tests {
             if let Ok(audio) = result {
                 assert!(!audio.is_empty(), "audio should not be empty");
                 // 24 kHz sample rate → at least ~8000 samples for "Hello world"
-                assert!(audio.len() > 1000, "audio too short: {} samples", audio.len());
+                assert!(
+                    audio.len() > 1000,
+                    "audio too short: {} samples",
+                    audio.len()
+                );
             }
         }
     }

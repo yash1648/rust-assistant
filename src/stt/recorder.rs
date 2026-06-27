@@ -1,13 +1,13 @@
+use super::audio::AudioConfig;
+use super::io::{spawn_enter_listener, wait_enter};
+use super::vad::{VadConfig, VadState};
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use hound::{WavWriter, WavSpec};
+use hound::{WavSpec, WavWriter};
 use std::io::Cursor;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use super::audio::AudioConfig;
-use super::io::{spawn_enter_listener, wait_enter};
-use super::vad::{VadConfig, VadState};
 
 /// Record audio from the default microphone to an in-memory buffer (WAV format)
 ///
@@ -54,12 +54,11 @@ pub fn record_to_buffer() -> Result<Cursor<Vec<u8>>> {
                 .build_input_stream(
                     &stream_config,
                     move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                        let mut guard = pcm_clone
-                            .lock()
-                            .expect("Audio PCM buffer lock poisoned");
+                        let mut guard = pcm_clone.lock().expect("Audio PCM buffer lock poisoned");
                         for &sample in data {
                             let s = (sample * i16::MAX as f32)
-                                .clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+                                .clamp(i16::MIN as f32, i16::MAX as f32)
+                                as i16;
                             guard.push(s);
                         }
                     },
@@ -103,14 +102,16 @@ pub fn record_to_buffer() -> Result<Cursor<Vec<u8>>> {
     let mut cursor = Cursor::new(Vec::with_capacity(
         samples.len() * 2 + 44, // PCM data + WAV header estimate
     ));
-    let mut writer = WavWriter::new(&mut cursor, spec)
-        .context("failed to create in-memory WAV writer")?;
+    let mut writer =
+        WavWriter::new(&mut cursor, spec).context("failed to create in-memory WAV writer")?;
     for &sample in &samples {
         writer
             .write_sample(sample)
             .context("failed to write audio sample")?;
     }
-    writer.finalize().context("failed to finalize WAV recording")?;
+    writer
+        .finalize()
+        .context("failed to finalize WAV recording")?;
     cursor.set_position(0);
     Ok(cursor)
 }
@@ -176,7 +177,8 @@ pub fn record_to_buffer_vad(vad_config: VadConfig) -> Result<Cursor<Vec<u8>>> {
                         if let Ok(mut guard) = pcm_clone.lock() {
                             for &sample in data {
                                 let s = (sample * i16::MAX as f32)
-                                    .clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+                                    .clamp(i16::MIN as f32, i16::MAX as f32)
+                                    as i16;
                                 guard.push(s);
                             }
                         }
@@ -202,7 +204,10 @@ pub fn record_to_buffer_vad(vad_config: VadConfig) -> Result<Cursor<Vec<u8>>> {
     };
 
     stream.play()?;
-    println!("🎙 Recording... (VAD auto-stop, press ENTER to force-stop, {}s timeout)", MAX_RECORDING_SECS);
+    println!(
+        "🎙 Recording... (VAD auto-stop, press ENTER to force-stop, {}s timeout)",
+        MAX_RECORDING_SECS
+    );
 
     // Poll until VAD triggers, Enter is pressed, or safety timeout
     let start = std::time::Instant::now();
@@ -229,17 +234,17 @@ pub fn record_to_buffer_vad(vad_config: VadConfig) -> Result<Cursor<Vec<u8>>> {
         sample_format: hound::SampleFormat::Int,
     };
 
-    let mut cursor = Cursor::new(Vec::with_capacity(
-        samples.len() * 2 + 44,
-    ));
-    let mut writer = WavWriter::new(&mut cursor, spec)
-        .context("failed to create in-memory WAV writer")?;
+    let mut cursor = Cursor::new(Vec::with_capacity(samples.len() * 2 + 44));
+    let mut writer =
+        WavWriter::new(&mut cursor, spec).context("failed to create in-memory WAV writer")?;
     for &sample in &samples {
         writer
             .write_sample(sample)
             .context("failed to write audio sample")?;
     }
-    writer.finalize().context("failed to finalize WAV recording")?;
+    writer
+        .finalize()
+        .context("failed to finalize WAV recording")?;
     cursor.set_position(0);
     Ok(cursor)
 }
