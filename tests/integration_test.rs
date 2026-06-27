@@ -34,7 +34,11 @@ model_path = "models/ggml-base.en.bin"
     let _dir = with_temp_config(toml);
     let content = std::fs::read_to_string("Assistant.toml").unwrap();
     let parsed: Result<toml::Value, _> = toml::from_str(&content);
-    assert!(parsed.is_ok(), "valid TOML should parse: {:?}", parsed.err());
+    assert!(
+        parsed.is_ok(),
+        "valid TOML should parse: {:?}",
+        parsed.err()
+    );
     // TempDir auto-cleaned on drop
 }
 
@@ -42,10 +46,7 @@ model_path = "models/ggml-base.en.bin"
 #[test]
 fn test_config_defaults() {
     let _dir = with_temp_config("");
-    assert_eq!(
-        rust_assistant::default_ollama_server(),
-        "127.0.0.1:11434"
-    );
+    assert_eq!(rust_assistant::default_ollama_server(), "127.0.0.1:11434");
     assert_eq!(rust_assistant::default_tts_voice(), "Jasper");
     assert!((rust_assistant::default_tts_speed() - 1.0).abs() < f32::EPSILON);
 }
@@ -76,15 +77,24 @@ fn test_cli_parsing() {
 
     // Setup command
     let cli = Cli::try_parse_from(["rust-assistant", "setup"]).unwrap();
-    assert!(matches!(cli.command, Some(rust_assistant::Commands::Setup { .. })));
+    assert!(matches!(
+        cli.command,
+        Some(rust_assistant::Commands::Setup { .. })
+    ));
 
     // Doctor command
     let cli = Cli::try_parse_from(["rust-assistant", "doctor"]).unwrap();
-    assert!(matches!(cli.command, Some(rust_assistant::Commands::Doctor)));
+    assert!(matches!(
+        cli.command,
+        Some(rust_assistant::Commands::Doctor)
+    ));
 
     // Generate config
     let cli = Cli::try_parse_from(["rust-assistant", "generate-config"]).unwrap();
-    assert!(matches!(cli.command, Some(rust_assistant::Commands::GenerateConfig)));
+    assert!(matches!(
+        cli.command,
+        Some(rust_assistant::Commands::GenerateConfig)
+    ));
 
     // Env command
     let cli = Cli::try_parse_from(["rust-assistant", "env"]).unwrap();
@@ -92,7 +102,12 @@ fn test_cli_parsing() {
 
     // Shell completion
     let cli = Cli::try_parse_from(["rust-assistant", "generate-completion", "bash"]).unwrap();
-    assert!(matches!(cli.command, Some(rust_assistant::Commands::GenerateCompletion { shell: rust_assistant::ShellKind::Bash })));
+    assert!(matches!(
+        cli.command,
+        Some(rust_assistant::Commands::GenerateCompletion {
+            shell: rust_assistant::ShellKind::Bash
+        })
+    ));
 
     // Verbose flag
     let cli = Cli::try_parse_from(["rust-assistant", "-v"]).unwrap();
@@ -104,9 +119,10 @@ fn test_cli_parsing() {
 fn test_llm_request_format() {
     use rust_assistant::Message;
 
-    let history = [
-        Message { role: "user".into(), content: "Hello".into() },
-    ];
+    let history = [Message {
+        role: "user".into(),
+        content: "Hello".into(),
+    }];
 
     assert_eq!(history[0].role, "user");
     assert_eq!(history[0].content, "Hello");
@@ -167,5 +183,9 @@ fn test_generate_default_toml() {
 fn test_generated_toml_is_valid() {
     let toml = rust_assistant::generate_default_toml();
     let parsed: Result<toml::Value, _> = toml::from_str(&toml);
-    assert!(parsed.is_ok(), "generated TOML should be valid: {:?}", parsed.err());
+    assert!(
+        parsed.is_ok(),
+        "generated TOML should be valid: {:?}",
+        parsed.err()
+    );
 }
