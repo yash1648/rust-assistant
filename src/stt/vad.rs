@@ -29,7 +29,7 @@ impl Default for VadConfig {
     fn default() -> Self {
         Self {
             threshold: 0.02,
-            max_silent_frames: 40,  // 800ms
+            max_silent_frames: 40, // 800ms
             sample_rate: 16000,
         }
     }
@@ -124,10 +124,13 @@ fn compute_rms_i16(samples: &[i16]) -> f32 {
     if samples.is_empty() {
         return 0.0;
     }
-    let sum_sq: f32 = samples.iter().map(|&s| {
-        let f = s as f32 / i16::MAX as f32;
-        f * f
-    }).sum();
+    let sum_sq: f32 = samples
+        .iter()
+        .map(|&s| {
+            let f = s as f32 / i16::MAX as f32;
+            f * f
+        })
+        .sum();
     (sum_sq / samples.len() as f32).sqrt()
 }
 
@@ -157,14 +160,22 @@ mod tests {
         // Full scale square wave → RMS = 1.0
         let samples = vec![i16::MAX; 1000];
         let rms = compute_rms_i16(&samples);
-        assert!((rms - 1.0).abs() < 0.01, "full-scale RMS should be ~1.0, got {}", rms);
+        assert!(
+            (rms - 1.0).abs() < 0.01,
+            "full-scale RMS should be ~1.0, got {}",
+            rms
+        );
     }
 
     #[test]
     fn test_rms_half_scale() {
         let samples = vec![i16::MAX / 2; 1000];
         let rms = compute_rms_i16(&samples);
-        assert!((rms - 0.5).abs() < 0.01, "half-scale RMS should be ~0.5, got {}", rms);
+        assert!(
+            (rms - 0.5).abs() < 0.01,
+            "half-scale RMS should be ~0.5, got {}",
+            rms
+        );
     }
 
     #[test]
@@ -188,7 +199,10 @@ mod tests {
         for _ in 0..3 {
             state.process_audio(&silent);
         }
-        assert!(state.is_stopped(), "VAD should trigger after 3 silent frames");
+        assert!(
+            state.is_stopped(),
+            "VAD should trigger after 3 silent frames"
+        );
     }
 
     #[test]
@@ -211,14 +225,20 @@ mod tests {
 
         // Speech resets counter
         state.process_audio(&speech);
-        assert_eq!(state.silent_frames.load(Ordering::Relaxed), 0,
-            "speech should reset silent frame counter");
+        assert_eq!(
+            state.silent_frames.load(Ordering::Relaxed),
+            0,
+            "speech should reset silent frame counter"
+        );
 
         // Now 5 silent frames
         for _ in 0..5 {
             state.process_audio(&silent);
         }
-        assert!(state.is_stopped(), "5 silent frames after speech should stop");
+        assert!(
+            state.is_stopped(),
+            "5 silent frames after speech should stop"
+        );
     }
 
     #[test]
@@ -238,7 +258,10 @@ mod tests {
 
         state.reset();
         assert!(!state.is_stopped(), "reset should clear stop flag");
-        assert_eq!(state.silent_frames.load(Ordering::Relaxed), 0,
-            "reset should clear silent frame counter");
+        assert_eq!(
+            state.silent_frames.load(Ordering::Relaxed),
+            0,
+            "reset should clear silent frame counter"
+        );
     }
 }

@@ -1,5 +1,5 @@
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn print_colored(msg: &str, color: Color) {
     let mut stdout = StandardStream::stdout(ColorChoice::Auto);
@@ -10,10 +10,18 @@ pub fn print_colored(msg: &str, color: Color) {
     let _ = stdout.reset();
 }
 
-pub fn success(msg: &str) { print_colored(msg, Color::Green) }
-pub fn error(msg: &str) { print_colored(msg, Color::Red) }
-pub fn info(msg: &str) { print_colored(msg, Color::Cyan) }
-pub fn warning(msg: &str) { print_colored(msg, Color::Yellow) }
+pub fn success(msg: &str) {
+    print_colored(msg, Color::Green)
+}
+pub fn error(msg: &str) {
+    print_colored(msg, Color::Red)
+}
+pub fn info(msg: &str) {
+    print_colored(msg, Color::Cyan)
+}
+pub fn warning(msg: &str) {
+    print_colored(msg, Color::Yellow)
+}
 
 #[cfg(test)]
 mod tests {

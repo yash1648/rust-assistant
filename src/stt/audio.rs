@@ -1,5 +1,5 @@
-use cpal::traits::{DeviceTrait, HostTrait};
 use anyhow::{Context, Result};
+use cpal::traits::{DeviceTrait, HostTrait};
 
 pub struct AudioConfig {
     pub sample_rate: u32,
@@ -13,14 +13,14 @@ impl AudioConfig {
         let device = host
             .default_input_device()
             .context("no default input device available")?;
-        
+
         let config = device
             .default_input_config()
             .context("no default input config")?;
-        
+
         println!("🎛 Input device: {}", device.name()?);
         println!("📡 Config: {:?}", config);
-        
+
         Ok(Self {
             sample_rate: config.sample_rate().0,
             channels: config.channels() as u16,
