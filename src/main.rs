@@ -1,3 +1,6 @@
+// Many re-exported public API items are unused by the binary itself
+#![allow(dead_code)]
+
 use anyhow::Result;
 use clap::{Parser, CommandFactory};
 use clap_complete::{generate_to, shells};

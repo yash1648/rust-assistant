@@ -1,3 +1,6 @@
+// Temporary: many public API items are unused by the binary but part of the library surface
+#![allow(dead_code)]
+
 //! # rust-assistant
 //!
 //! A local-first, privacy-focused voice assistant written in Rust.
@@ -36,7 +39,7 @@ pub use stt::audio::AudioConfig;
 pub use cpal::SampleFormat;
 
 /// The sample rate used by the TTS engine (24 kHz)
-pub const TTS_SAMPLE_RATE: u32 = kittentts::SAMPLE_RATE as u32;
+pub const TTS_SAMPLE_RATE: u32 = kittentts::SAMPLE_RATE;
 
 /// The sample rate expected by Whisper (16 kHz)
 pub const STT_SAMPLE_RATE: u32 = 16000;

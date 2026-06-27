@@ -47,7 +47,7 @@ fn test_config_defaults() {
         "127.0.0.1:11434"
     );
     assert_eq!(rust_assistant::default_tts_voice(), "Jasper");
-    assert!(rust_assistant::default_tts_speed() - 1.0 < f32::EPSILON);
+    assert!((rust_assistant::default_tts_speed() - 1.0).abs() < f32::EPSILON);
 }
 
 /// Test that the error module works
@@ -104,7 +104,7 @@ fn test_cli_parsing() {
 fn test_llm_request_format() {
     use rust_assistant::Message;
 
-    let history = vec![
+    let history = [
         Message { role: "user".into(), content: "Hello".into() },
     ];
 

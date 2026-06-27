@@ -78,7 +78,6 @@ impl TtsEngine {
             Default::default(),
             Default::default(),
         )
-        .map(KittenTTS::from)
         .context("failed to load KittenTTS model from local files")
     }
 
@@ -102,7 +101,7 @@ impl TtsEngine {
         let sink = Sink::try_new(&stream_handle)
             .context("failed to create audio sink")?;
 
-        let source = SamplesBuffer::new(1, kittentts::SAMPLE_RATE as u32, samples.to_vec());
+        let source = SamplesBuffer::new(1, kittentts::SAMPLE_RATE, samples.to_vec());
         sink.append(source);
         sink.sleep_until_end();
 
@@ -114,7 +113,7 @@ impl TtsEngine {
         let samples = self.synthesize(text)?;
         let spec = hound::WavSpec {
             channels: 1,
-            sample_rate: kittentts::SAMPLE_RATE as u32,
+            sample_rate: kittentts::SAMPLE_RATE,
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
