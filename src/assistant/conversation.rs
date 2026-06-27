@@ -1,12 +1,12 @@
+use crate::assistant::config::Config;
+use crate::assistant::llm;
+use crate::stt;
+use crate::tts;
+use crate::ui;
 use anyhow::Result;
 use indicatif::ProgressBar;
 use std::path::Path;
 use std::time::Duration;
-use crate::ui;
-use crate::stt;
-use crate::tts;
-use crate::assistant::llm;
-use crate::assistant::config::Config;
 
 /// Maximum conversation turns to keep in context (to bound memory & Ollama context)
 const MAX_HISTORY_TURNS: usize = 10;
@@ -19,7 +19,10 @@ pub struct Assistant {
 }
 
 #[derive(Debug, Clone)]
-pub struct Message { pub role: String, pub content: String }
+pub struct Message {
+    pub role: String,
+    pub content: String,
+}
 
 impl Assistant {
     pub fn new() -> Result<Self> {
@@ -164,6 +167,9 @@ mod tests {
 
         // The oldest messages should have been dropped
         let first = &history[0];
-        assert_ne!(first.content, "msg 0", "Oldest message should have been dropped");
+        assert_ne!(
+            first.content, "msg 0",
+            "Oldest message should have been dropped"
+        );
     }
 }

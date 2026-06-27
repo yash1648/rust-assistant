@@ -1,8 +1,8 @@
+use super::conversation::Message;
+use crate::assistant::config::Config;
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::sync::OnceLock;
-use crate::assistant::config::Config;
-use super::conversation::Message;
 
 /// Shared HTTP client — avoids creating a new TCP connection pool per call
 fn get_client() -> &'static reqwest::Client {
@@ -41,7 +41,11 @@ pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     if !resp.status().is_success() {
         let status = resp.status();
         let error_text = resp.text().await.unwrap_or_default();
-        return Err(anyhow::anyhow!("Ollama API error: {} - {}", status, error_text));
+        return Err(anyhow::anyhow!(
+            "Ollama API error: {} - {}",
+            status,
+            error_text
+        ));
     }
 
     let body: serde_json::Value = resp.json().await.context("invalid JSON from Ollama")?;
