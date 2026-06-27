@@ -1,0 +1,172 @@
+{
+  "src/assistant/config.rs": {
+    "mtime": 1782590071.1270742,
+    "ast_hash": "6a1eb2dd4a3f80845851154098682c6c",
+    "semantic_hash": ""
+  },
+  "src/assistant/conversation.rs": {
+    "mtime": 1782590091.252053,
+    "ast_hash": "98f3444b53b478fe40ef5e8b7e09a18b",
+    "semantic_hash": ""
+  },
+  "src/assistant/llm.rs": {
+    "mtime": 1782585798.554427,
+    "ast_hash": "177e27baedaa9fed8afd864355d10aea",
+    "semantic_hash": ""
+  },
+  "src/assistant/mod.rs": {
+    "mtime": 1782582672.2487447,
+    "ast_hash": "4676ac81f949face4176db66f6e548bc",
+    "semantic_hash": ""
+  },
+  "src/cli.rs": {
+    "mtime": 1782582646.0527818,
+    "ast_hash": "476ee8c09093669e106deae5107b8042",
+    "semantic_hash": ""
+  },
+  "src/error.rs": {
+    "mtime": 1782582673.314863,
+    "ast_hash": "ed0b78bff66218825d63947ed392467b",
+    "semantic_hash": ""
+  },
+  "src/lib.rs": {
+    "mtime": 1782582727.838734,
+    "ast_hash": "a7503532e91a60d8a41250f9e9e6d2ee",
+    "semantic_hash": ""
+  },
+  "src/main.rs": {
+    "mtime": 1782589277.3693278,
+    "ast_hash": "8927d86ad7ee579e5de1f45dda09337d",
+    "semantic_hash": ""
+  },
+  "src/stt/audio.rs": {
+    "mtime": 1782582086.0246346,
+    "ast_hash": "6fb8286b068391a01cead840801baf17",
+    "semantic_hash": ""
+  },
+  "src/stt/io.rs": {
+    "mtime": 1782589880.4454944,
+    "ast_hash": "dbea8b84256f49cddfefa5aa460c3c30",
+    "semantic_hash": ""
+  },
+  "src/stt/mod.rs": {
+    "mtime": 1782589856.1291506,
+    "ast_hash": "31f00e3f8d88814ba4771bab5ecb155e",
+    "semantic_hash": ""
+  },
+  "src/stt/recorder.rs": {
+    "mtime": 1782589998.187929,
+    "ast_hash": "b81ca095d097474541012d82de872b2c",
+    "semantic_hash": ""
+  },
+  "src/stt/transcriber.rs": {
+    "mtime": 1782585822.532869,
+    "ast_hash": "74612a4defd60848c8fc286f304ad836",
+    "semantic_hash": ""
+  },
+  "src/tts/engine.rs": {
+    "mtime": 1782582624.5442615,
+    "ast_hash": "db5aa86da9db4e5330704195638d6096",
+    "semantic_hash": ""
+  },
+  "src/tts/mod.rs": {
+    "mtime": 1782582625.3683598,
+    "ast_hash": "8c0d6b8c9668674bcdf4590a6baccf51",
+    "semantic_hash": ""
+  },
+  "src/ui.rs": {
+    "mtime": 1782582675.1170628,
+    "ast_hash": "953b8bd7ad19214c143bd2a56afc9239",
+    "semantic_hash": ""
+  },
+  "tests/integration_test.rs": {
+    "mtime": 1782590107.5006528,
+    "ast_hash": "b4ddcd8577e650006663d3c3209cba2b",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1782582699.6627421,
+    "ast_hash": "0d66488340d963dbad350de7154a856f",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1782582086.023504,
+    "ast_hash": "d157fbbb7eda5efe41f93c973da3f34d",
+    "semantic_hash": ""
+  },
+  "Readme.md": {
+    "mtime": 1782582086.023504,
+    "ast_hash": "9deffa41abd9c2a653c9d70d5868931e",
+    "semantic_hash": ""
+  },
+  "docs/development.md": {
+    "mtime": 1782582086.023504,
+    "ast_hash": "8047741937924a067ba764c94291ec16",
+    "semantic_hash": ""
+  },
+  "docs/faq.md": {
+    "mtime": 1782582086.0242057,
+    "ast_hash": "78ce649d5859f036fd29f5e2f2986bfe",
+    "semantic_hash": ""
+  },
+  "docs/installation.md": {
+    "mtime": 1782582086.0242057,
+    "ast_hash": "b76c363c0a61840430948bd8a9c6e784",
+    "semantic_hash": ""
+  },
+  "docs/known-issues.md": {
+    "mtime": 1782582086.0242057,
+    "ast_hash": "3026dc1751ad3f10dec714618f757834",
+    "semantic_hash": ""
+  },
+  "docs/roadmap.md": {
+    "mtime": 1782582086.0242057,
+    "ast_hash": "100520416f712125c94122e7d503cd94",
+    "semantic_hash": ""
+  },
+  "docs/technical.md": {
+    "mtime": 1782582086.0242057,
+    "ast_hash": "8de8c7b5e1edebbc258daa7cb66d7c23",
+    "semantic_hash": ""
+  },
+  "docs/troubleshooting.md": {
+    "mtime": 1782582086.0242057,
+    "ast_hash": "54d3606b7376f558123685197c7e5761",
+    "semantic_hash": ""
+  },
+  "startup-builder-memory/architecture-map.md": {
+    "mtime": 1782589048.7291918,
+    "ast_hash": "8b57e8f0117122bfdfe4504cbb81844c",
+    "semantic_hash": ""
+  },
+  "startup-builder-memory/decisions.md": {
+    "mtime": 1782590153.3191733,
+    "ast_hash": "d0b4f38cd4a7173c3a0f954f4ef5e9a1",
+    "semantic_hash": ""
+  },
+  "startup-builder-memory/handoff.md": {
+    "mtime": 1782590147.0945585,
+    "ast_hash": "8440b711349f4e3ff8b24e72b89e6592",
+    "semantic_hash": ""
+  },
+  "startup-builder-memory/product-brief.md": {
+    "mtime": 1782583702.8431616,
+    "ast_hash": "e5cce077374f83cda8174a3db307b7d6",
+    "semantic_hash": ""
+  },
+  "startup-builder-memory/repo-map.md": {
+    "mtime": 1782583716.4746249,
+    "ast_hash": "dc0778aff62e074041d13225b8ded4c5",
+    "semantic_hash": ""
+  },
+  "startup-builder-memory/task-ledger.md": {
+    "mtime": 1782590141.9590514,
+    "ast_hash": "eae48a14011c53e3ad3c34d4631a2681",
+    "semantic_hash": ""
+  },
+  "src/stt/vad.rs": {
+    "mtime": 1782589850.210581,
+    "ast_hash": "2858c7f4cb808642907a0ccceff857e3",
+    "semantic_hash": ""
+  }
+}
