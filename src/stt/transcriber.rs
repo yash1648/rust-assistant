@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use hound::WavReader;
+use std::io::Read;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 /// Pure Rust STT using whisper-rs
@@ -21,20 +22,31 @@ impl WhisperTranscriber {
         Ok(Self { ctx })
     }
 
-    /// Transcribe audio from a WAV file
+    /// Transcribe audio from a WAV file path
     pub fn transcribe_wav(&mut self, wav_path: &str) -> Result<String> {
-        // Read WAV file
-        let samples = Self::load_wav_samples(wav_path)?;
+        let reader = WavReader::open(wav_path)
+            .with_context(|| format!("failed to open WAV file: {}", wav_path))?;
+        let samples = Self::process_reader(reader)?;
+        self.transcribe_samples(&samples)
+    }
 
+    /// Transcribe audio from an in-memory WAV buffer
+    pub fn transcribe_buffer<R: Read>(&mut self, reader: R) -> Result<String> {
+        let reader = WavReader::new(reader)
+            .context("failed to read WAV from buffer")?;
+        let samples = Self::process_reader(reader)?;
+        self.transcribe_samples(&samples)
+    }
+
+    /// Common transcription pipeline from raw f32 samples
+    fn transcribe_samples(&mut self, samples: &[f32]) -> Result<String> {
         if samples.is_empty() {
-            anyhow::bail!("no audio samples found in WAV file");
+            anyhow::bail!("no audio samples found — speak into the microphone before pressing Enter");
         }
 
-        // Create whisper state
         let mut state = self.ctx.create_state()
             .context("failed to create Whisper state")?;
 
-        // Configure transcription parameters
         let mut params = FullParams::new(SamplingStrategy::BeamSearch {
             beam_size: 5,
             patience: -1.0,
@@ -44,12 +56,10 @@ impl WhisperTranscriber {
         params.set_no_context(true);
         params.set_single_segment(true);
 
-        // Run transcription
         state
-            .full(params, &samples[..])
+            .full(params, samples)
             .context("transcription failed")?;
 
-        // Collect all text from segments
         let mut transcription = String::new();
         for segment in state.as_iter() {
             let text = segment.to_string().trim().to_string();
@@ -62,16 +72,12 @@ impl WhisperTranscriber {
         Ok(transcription.trim().to_string())
     }
 
-    /// Load WAV file and convert to f32 mono 16kHz samples
-    fn load_wav_samples(wav_path: &str) -> Result<Vec<f32>> {
-        let reader = WavReader::open(wav_path)
-            .with_context(|| format!("failed to open WAV file: {}", wav_path))?;
-
+    /// Read WAV, resample to 16kHz, mix to mono — returns f32 samples
+    fn process_reader<R: Read>(reader: WavReader<R>) -> Result<Vec<f32>> {
         let spec = reader.spec();
         println!("📼 WAV: {}Hz, {} channels, {} bits",
             spec.sample_rate, spec.channels, spec.bits_per_sample);
 
-        // Convert to mono f32 at 16kHz
         let samples: Vec<f32> = match (spec.sample_format, spec.bits_per_sample) {
             (hound::SampleFormat::Int, 16) => {
                 reader.into_samples::<i16>()
@@ -101,14 +107,12 @@ impl WhisperTranscriber {
             samples
         };
 
-        // Mix stereo to mono if needed
-        let samples = if spec.channels == 2 {
-            Self::mix_to_mono(&samples)
+        // Mix to mono (handle any channel count)
+        if spec.channels > 1 {
+            Ok(Self::mix_to_mono(&samples, spec.channels as usize))
         } else {
-            samples
-        };
-
-        Ok(samples)
+            Ok(samples)
+        }
     }
 
     /// Simple linear resampling
@@ -137,16 +141,50 @@ impl WhisperTranscriber {
         Ok(result)
     }
 
-    /// Mix stereo samples to mono
-    fn mix_to_mono(samples: &[f32]) -> Vec<f32> {
-        samples.chunks(2)
+    /// Mix N-channel audio to mono by averaging all channels
+    fn mix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
+        samples.chunks(channels)
             .map(|chunk| {
-                match chunk {
-                    &[left, right] => (left + right) / 2.0,
-                    &[single] => single,
-                    _ => 0.0,
-                }
+                let sum: f32 = chunk.iter().sum();
+                sum / channels as f32
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resample_empty() {
+        let result = WhisperTranscriber::resample(&[], 44100.0, 16000.0).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_resample_basic() {
+        let input = vec![0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0];
+        let result = WhisperTranscriber::resample(&input, 44100.0, 16000.0).unwrap();
+        // Downsampling by ~2.76x should produce fewer samples
+        assert!(result.len() < input.len());
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_mix_to_mono_stereo() {
+        let stereo = vec![0.5, -0.5, 1.0, -1.0];
+        let mono = WhisperTranscriber::mix_to_mono(&stereo, 2);
+        assert_eq!(mono.len(), 2);
+        assert!((mono[0] - 0.0).abs() < f32::EPSILON);  // (0.5 + -0.5) / 2 = 0
+        assert!((mono[1] - 0.0).abs() < f32::EPSILON);  // (1.0 + -1.0) / 2 = 0
+    }
+
+    #[test]
+    fn test_mix_to_mono_5_channel() {
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let mono = WhisperTranscriber::mix_to_mono(&input, 5);
+        assert_eq!(mono.len(), 1);
+        assert!((mono[0] - 3.0).abs() < f32::EPSILON);  // (1+2+3+4+5)/5 = 3
     }
 }

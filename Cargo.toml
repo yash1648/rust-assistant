@@ -1,28 +1,57 @@
 [package]
-name = "Assistant"
-version = "0.1.0"
+name = "rust-assistant"
+version = "0.2.0"
 edition = "2021"
+description = "A local-first, privacy-focused voice assistant — 100% Rust, zero Python, zero cloud"
+license = "MIT"
+authors = ["Yash Bagal"]
+repository = "https://github.com/yashb/rust-assistant"
+keywords = ["voice", "assistant", "stt", "tts", "local"]
+categories = ["command-line-utilities", "multimedia::audio"]
+
+[profile.release]
+# Maximum runtime performance
+opt-level = 3
+# Full link-time optimization across all crates
+lto = "fat"
+# Single codegen unit for maximum optimizer visibility
+codegen-units = 1
+# Strip all symbols from release binary
+strip = "symbols"
+# Abort on panic instead of unwinding (smaller binary, no unwinding overhead)
+panic = "abort"
+# No debug info in release
+debug = false
+# No overflow checks in release
+overflow-checks = false
 
 [dependencies]
 anyhow = "1"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
 rodio = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 cpal = "0.15"
 hound = "3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util"] }
 clap = { version = "4", features = ["derive", "cargo", "color"] }
 clap_complete = "4"
 indicatif = "0.17"
-termcolor = "1.3"
+termcolor = "1.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 thiserror = "1"
 toml = "0.8"
-any-tts = { version = "0.1", default-features = false, features = ["kokoro", "download"] }
-dirs = "5"
-arboard = "3"
-# Added dependencies below
 whisper-rs = "0.16"
-shellexpand = "3"
+tempfile = "3"
+# Pure Rust TTS — zero system dependencies, ONNX-based
+kittentts = { version = "0.4", features = ["espeak"] }
+# HTTP server for API mode
+axum = { version = "0.8", optional = true }
+
+[features]
+default = []
+server = ["dep:axum"]
+
+[badges]
+maintenance = { status = "actively-developed" }

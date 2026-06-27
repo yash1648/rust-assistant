@@ -1,14 +1,18 @@
-# Assistant Configuration
-# Environment variables override these settings
+# rust-assistant Configuration
+# Environment variables override these settings.
+# All paths are relative to the project root.
 
 [ollama]
 server = "127.0.0.1:11434"
-model = "dolphin-phi:latest"
+model = "qwen3:4b-instruct-2507-q4_K_M"
 
 [tts]
-voice = "af_heart"
-model_path = "models/kokoro"
-voices_path = "models/kokoro/voices"
+# Voice name (Jasper, Luna, Bella, Bruno, Rosie, Hugo, Kiki, Leo)
+voice = "Jasper"
+# Local model directory (optional — auto-downloads from HuggingFace if unset)
+# model_dir = "models/kitten-tts-mini"
+# Speech speed (0.5 = half speed, 2.0 = double speed)
+speed = 1.0
 
 [stt]
 model_path = "models/ggml-base.en.bin"

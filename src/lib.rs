@@ -1,0 +1,42 @@
+//! # rust-assistant
+//!
+//! A local-first, privacy-focused voice assistant written in Rust.
+//!
+//! ## Pipeline
+//!
+//! 1. **Record** — Capture microphone audio via `cpal` + `hound` (WAV)
+//! 2. **Transcribe** — Speech-to-text via `whisper-rs` (whisper.cpp bindings)
+//! 3. **Understand** — LLM inference via local Ollama server
+//! 4. **Speak** — Text-to-speech via `kittentts` (pure Rust, zero system deps)
+//!
+//! ## Architecture
+//!
+//! - `cli` — CLI argument parsing (clap)
+//! - `assistant` — Conversation loop, config, LLM client
+//! - `stt` — Speech-to-text: audio capture + Whisper transcription
+//! - `tts` — Text-to-speech: pure Rust KittenTTS engine
+//! - `error` — Structured error types
+//! - `ui` — Terminal UI helpers (colored output)
+
+pub mod cli;
+pub mod assistant;
+pub mod stt;
+pub mod tts;
+pub mod ui;
+pub mod error;
+
+// Re-exports for convenience and testing
+pub use cli::{Cli, Commands, ShellKind};
+pub use assistant::config::{Config, env_vars, generate_default_toml, default_ollama_server, default_tts_voice, default_tts_speed};
+pub use assistant::conversation::Message;
+pub use error::AssistantError;
+pub use stt::audio::AudioConfig;
+
+// Re-export cpal SampleFormat for testing
+pub use cpal::SampleFormat;
+
+/// The sample rate used by the TTS engine (24 kHz)
+pub const TTS_SAMPLE_RATE: u32 = kittentts::SAMPLE_RATE as u32;
+
+/// The sample rate expected by Whisper (16 kHz)
+pub const STT_SAMPLE_RATE: u32 = 16000;

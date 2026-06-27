@@ -14,22 +14,22 @@ pub struct Config {
     #[serde(default = "default_tts_voice")]
     pub tts_voice: String,
 
-    #[serde(default = "default_tts_model_path")]
-    pub tts_model_path: String,
+    #[serde(default = "default_tts_model_dir")]
+    pub tts_model_dir: Option<String>,
 
-    #[serde(default = "default_tts_voices_path")]
-    pub tts_voices_path: String,
+    #[serde(default = "default_tts_speed")]
+    pub tts_speed: f32,
 
     #[serde(default = "default_stt_model_path")]
     pub stt_model_path: String,
 }
 
-fn default_ollama_server() -> String { "127.0.0.1:11434".into() }
-fn default_ollama_model() -> String { "gemma3:latest".into() }
-fn default_tts_voice() -> String { "af_heart".into() }
-fn default_tts_model_path() -> String { "models/kokoro".into() }
-fn default_tts_voices_path() -> String { "models/kokoro/voices".into() }
-fn default_stt_model_path() -> String { "models/ggml-base.en.bin".into() }
+pub fn default_ollama_server() -> String { "127.0.0.1:11434".into() }
+pub fn default_ollama_model() -> String { "qwen3:4b-instruct-2507-q4_K_M".into() }
+pub fn default_tts_voice() -> String { "Jasper".into() }
+pub fn default_tts_model_dir() -> Option<String> { None }
+pub fn default_tts_speed() -> f32 { 1.0 }
+pub fn default_stt_model_path() -> String { "models/ggml-base.en.bin".into() }
 
 impl Default for Config {
     fn default() -> Self {
@@ -48,8 +48,8 @@ impl Config {
                     ollama_server: toml.ollama.as_ref().and_then(|o| o.server.clone()).unwrap_or_else(default_ollama_server),
                     ollama_model: toml.ollama.as_ref().and_then(|o| o.model.clone()).unwrap_or_else(default_ollama_model),
                     tts_voice: toml.tts.as_ref().and_then(|t| t.voice.clone()).unwrap_or_else(default_tts_voice),
-                    tts_model_path: toml.tts.as_ref().and_then(|t| t.model_path.clone()).unwrap_or_else(default_tts_model_path),
-                    tts_voices_path: toml.tts.as_ref().and_then(|t| t.voices_path.clone()).unwrap_or_else(default_tts_voices_path),
+                    tts_model_dir: toml.tts.as_ref().and_then(|t| t.model_dir.clone()).or_else(default_tts_model_dir),
+                    tts_speed: toml.tts.as_ref().and_then(|t| t.speed).unwrap_or_else(default_tts_speed),
                     stt_model_path: toml.stt.as_ref().and_then(|s| s.model_path.clone()).unwrap_or_else(default_stt_model_path),
                 },
                 Err(e) => {
@@ -58,8 +58,8 @@ impl Config {
                         ollama_server: default_ollama_server(),
                         ollama_model: default_ollama_model(),
                         tts_voice: default_tts_voice(),
-                        tts_model_path: default_tts_model_path(),
-                        tts_voices_path: default_tts_voices_path(),
+                        tts_model_dir: default_tts_model_dir(),
+                        tts_speed: default_tts_speed(),
                         stt_model_path: default_stt_model_path(),
                     }
                 }
@@ -69,19 +69,19 @@ impl Config {
                 ollama_server: default_ollama_server(),
                 ollama_model: default_ollama_model(),
                 tts_voice: default_tts_voice(),
-                tts_model_path: default_tts_model_path(),
-                tts_voices_path: default_tts_voices_path(),
+                tts_model_dir: default_tts_model_dir(),
+                tts_speed: default_tts_speed(),
                 stt_model_path: default_stt_model_path(),
             }
         };
 
         // Apply environment variable overrides
-        config.ollama_server = env::var("OLLAMA_SERVER").unwrap_or(config.ollama_server);
-        config.ollama_model = env::var("OLLAMA_MODEL").unwrap_or(config.ollama_model);
-        config.tts_voice = env::var("TTS_VOICE").unwrap_or(config.tts_voice);
-        config.tts_model_path = env::var("TTS_MODEL_PATH").unwrap_or(config.tts_model_path);
-        config.tts_voices_path = env::var("TTS_VOICES_PATH").unwrap_or(config.tts_voices_path);
-        config.stt_model_path = env::var("STT_MODEL_PATH").unwrap_or(config.stt_model_path);
+        if let Ok(v) = env::var("OLLAMA_SERVER") { config.ollama_server = v; }
+        if let Ok(v) = env::var("OLLAMA_MODEL") { config.ollama_model = v; }
+        if let Ok(v) = env::var("TTS_VOICE") { config.tts_voice = v; }
+        if let Ok(v) = env::var("TTS_MODEL_DIR") { config.tts_model_dir = Some(v); }
+        if let Ok(v) = env::var("TTS_SPEED") { config.tts_speed = v.parse().unwrap_or(1.0); }
+        if let Ok(v) = env::var("STT_MODEL_PATH") { config.stt_model_path = v; }
 
         config
     }
@@ -92,8 +92,11 @@ impl Config {
         println!("   Ollama Server: {}", self.ollama_server);
         println!("   Ollama Model: {}", self.ollama_model);
         println!("   TTS Voice: {}", self.tts_voice);
-        println!("   TTS Model: {}", self.tts_model_path);
-        println!("   TTS Voices: {}", self.tts_voices_path);
+        match &self.tts_model_dir {
+            Some(d) => println!("   TTS Model: {} (local)", d),
+            None => println!("   TTS Model: auto-download (HuggingFace)"),
+        }
+        println!("   TTS Speed: {}x", self.tts_speed);
         println!("   STT Model: {}", self.stt_model_path);
     }
 }
@@ -120,8 +123,8 @@ struct OllamaSection {
 #[derive(Debug, Deserialize)]
 struct TtsSection {
     voice: Option<String>,
-    model_path: Option<String>,
-    voices_path: Option<String>,
+    model_dir: Option<String>,
+    speed: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -134,8 +137,8 @@ pub mod env_vars {
     pub const OLLAMA_SERVER: &str = "OLLAMA_SERVER";
     pub const OLLAMA_MODEL: &str = "OLLAMA_MODEL";
     pub const TTS_VOICE: &str = "TTS_VOICE";
-    pub const TTS_MODEL_PATH: &str = "TTS_MODEL_PATH";
-    pub const TTS_VOICES_PATH: &str = "TTS_VOICES_PATH";
+    pub const TTS_MODEL_DIR: &str = "TTS_MODEL_DIR";
+    pub const TTS_SPEED: &str = "TTS_SPEED";
     pub const STT_MODEL_PATH: &str = "STT_MODEL_PATH";
 }
 
@@ -145,25 +148,29 @@ pub fn print_env_help() {
     println!("   {} - Ollama server address", env_vars::OLLAMA_SERVER);
     println!("   {} - Ollama model name", env_vars::OLLAMA_MODEL);
     println!("   {} - TTS voice name", env_vars::TTS_VOICE);
-    println!("   {} - Path to TTS model", env_vars::TTS_MODEL_PATH);
-    println!("   {} - Path to voice files", env_vars::TTS_VOICES_PATH);
+    println!("   {} - Path to local TTS model directory", env_vars::TTS_MODEL_DIR);
+    println!("   {} - TTS speech speed multiplier (0.5-2.0)", env_vars::TTS_SPEED);
     println!("   {} - Path to Whisper STT model", env_vars::STT_MODEL_PATH);
     println!();
 }
 
 /// Generate default Assistant.toml
 pub fn generate_default_toml() -> String {
-    r#"# Assistant Configuration
-# Environment variables override these settings
+    r#"# rust-assistant Configuration
+# Environment variables override these settings.
+# All paths are relative to the project root.
 
 [ollama]
 server = "127.0.0.1:11434"
 model = "gemma3:latest"
 
 [tts]
-voice = "af_heart"
-model_path = "models/kokoro"
-voices_path = "models/kokoro/voices"
+# Voice name (Jasper, Luna, Bella, Bruno, Rosie, Hugo, Kiki, Leo)
+voice = "Jasper"
+# Local model directory (optional — auto-downloads from HuggingFace if unset)
+# model_dir = "models/kitten-tts-mini"
+# Speech speed (0.5 = half speed, 2.0 = double speed)
+speed = 1.0
 
 [stt]
 model_path = "models/ggml-base.en.bin"

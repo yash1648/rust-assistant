@@ -1,10 +1,22 @@
 use anyhow::{Context, Result};
 use serde_json::json;
+use std::sync::OnceLock;
 use crate::assistant::config::Config;
 use super::conversation::Message;
 
+/// Shared HTTP client — avoids creating a new TCP connection pool per call
+fn get_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .expect("Failed to build HTTP client")
+    })
+}
+
 pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
-    let client = reqwest::Client::new();
+    let client = get_client();
     let config = Config::from_toml();
 
     let messages: Vec<serde_json::Value> = history
@@ -33,12 +45,13 @@ pub async fn call_ollama_api(history: &[Message]) -> Result<String> {
     }
 
     let body: serde_json::Value = resp.json().await.context("invalid JSON from Ollama")?;
+
+    // Return an error if the LLM response is missing content (don't silently speak empty string)
     let content = body
         .get("message")
         .and_then(|m| m.get("content"))
         .and_then(|c| c.as_str())
-        .unwrap_or("")
-        .to_string();
+        .ok_or_else(|| anyhow::anyhow!("Ollama response missing 'message.content' field"))?;
 
-    Ok(content)
+    Ok(content.to_string())
 }

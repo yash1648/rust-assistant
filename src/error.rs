@@ -1,8 +1,27 @@
-// Error types for the assistant application
-// Currently using anyhow's anyhow! macro for most errors
-// This module is reserved for structured error types if needed in the future
+//! Structured error types for the assistant application.
 
-#[allow(dead_code)]
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 pub enum AssistantError {
-    // Placeholder for future structured errors
+    #[error("Configuration error: {0}")]
+    Config(String),
+
+    #[error("Model error: {0}")]
+    Model(String),
+
+    #[error("Audio error: {0}")]
+    Audio(String),
+
+    #[error("Network error: {0}")]
+    Network(#[from] reqwest::Error),
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("TTS error: {0}")]
+    Tts(String),
+
+    #[error("STT error: {0}")]
+    Stt(String),
 }

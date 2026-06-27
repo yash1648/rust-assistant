@@ -8,9 +8,12 @@ use crate::tts;
 use crate::assistant::llm;
 use crate::assistant::config::Config;
 
+/// Maximum conversation turns to keep in context (to bound memory & Ollama context)
+const MAX_HISTORY_TURNS: usize = 10;
+
 pub struct Assistant {
     conversation_history: Vec<Message>,
-    kokoro_tts: tts::KokoroTts,
+    tts_engine: tts::TtsEngine,
     transcriber: stt::transcriber::WhisperTranscriber,
 }
 
@@ -25,11 +28,11 @@ impl Assistant {
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(80));
 
-        pb.set_message("Initializing TTS...");
-        let kokoro_tts = tts::KokoroTts::new(
+        pb.set_message("Initializing TTS (pure Rust, no Python)...");
+        let tts_engine = tts::TtsEngine::new(
             &config.tts_voice,
-            Path::new(&config.tts_model_path),
-            Path::new(&config.tts_voices_path),
+            config.tts_model_dir.as_ref().map(Path::new),
+            config.tts_speed,
         )?;
 
         pb.set_message("Initializing STT...");
@@ -38,15 +41,18 @@ impl Assistant {
         pb.finish_and_clear();
         ui::success("✅ Assistant ready!\n");
 
+        // Ensure records directory exists
+        std::fs::create_dir_all("records").ok();
+
         Ok(Self {
             conversation_history: vec![],
-            kokoro_tts,
+            tts_engine,
             transcriber,
         })
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        ui::info("🤖 AI Assistant started (Whisper + Kokoro TTS)");
+        ui::info("🤖 AI Assistant started (100% Rust — Whisper STT + KittenTTS)");
         println!("Say 'exit' to quit.\n");
 
         loop {
@@ -59,7 +65,7 @@ impl Assistant {
             }
 
             println!("📝 You: {}\n", user_input);
-            self.conversation_history.push(Message {
+            self.add_message(Message {
                 role: "user".into(),
                 content: user_input.clone(),
             });
@@ -67,7 +73,7 @@ impl Assistant {
             let response = llm::call_ollama_api(&self.conversation_history).await?;
             println!("🤖 Assistant: {}\n", response);
 
-            self.conversation_history.push(Message {
+            self.add_message(Message {
                 role: "assistant".into(),
                 content: response.clone(),
             });
@@ -79,14 +85,76 @@ impl Assistant {
         Ok(())
     }
 
+    /// Add a message to history with bounded context window
+    fn add_message(&mut self, msg: Message) {
+        self.conversation_history.push(msg);
+        // Keep only the last N turns (each turn = user + assistant = 2 messages)
+        while self.conversation_history.len() > MAX_HISTORY_TURNS * 2 {
+            self.conversation_history.remove(0);
+        }
+    }
+
     fn listen_to_user(&mut self) -> Result<String> {
-        stt::recorder::record_to_wav("records/user_input.wav")?;
-        let text = self.transcriber.transcribe_wav("records/user_input.wav")?;
+        // Use in-memory recording for zero disk I/O
+        let buffer = stt::recorder::record_to_buffer()?;
+        // Transcribe directly from the buffer
+        let text = self.transcriber.transcribe_buffer(buffer)?;
         Ok(text)
     }
 
     fn speak_response(&mut self, text: &str) -> Result<()> {
-        self.kokoro_tts.speak_and_play_blocking(text)?;
+        self.tts_engine.speak_blocking(text)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_message_creation() {
+        let msg = Message {
+            role: "user".into(),
+            content: "Hello".into(),
+        };
+        assert_eq!(msg.role, "user");
+        assert_eq!(msg.content, "Hello");
+    }
+
+    #[test]
+    fn test_bounded_history_logic() {
+        // Test the bounded history algorithm directly (no model dependency)
+        let mut history: Vec<Message> = Vec::new();
+        let mut add_message = |msg: Message| {
+            history.push(msg);
+            while history.len() > MAX_HISTORY_TURNS * 2 {
+                history.remove(0);
+            }
+        };
+
+        // Add more than MAX_HISTORY_TURNS rounds
+        for i in 0..MAX_HISTORY_TURNS + 5 {
+            add_message(Message {
+                role: "user".into(),
+                content: format!("msg {}", i),
+            });
+            add_message(Message {
+                role: "assistant".into(),
+                content: format!("resp {}", i),
+            });
+        }
+
+        // History should be bounded
+        assert!(
+            history.len() <= MAX_HISTORY_TURNS * 2,
+            "History should be bounded to {} messages, got {}",
+            MAX_HISTORY_TURNS * 2,
+            history.len()
+        );
+
+        // The oldest messages should have been dropped
+        let first = &history[0];
+        assert_ne!(first.content, "msg 0", "Oldest message should have been dropped");
     }
 }
