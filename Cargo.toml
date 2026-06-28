@@ -43,6 +43,7 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 thiserror = "1"
 toml = "0.8"
 whisper-rs = "0.16"
+# GPU backends (opt-in via feature flags):
 tempfile = "3"
 # Pure Rust TTS — zero system dependencies, ONNX-based
 kittentts = { version = "0.4", features = ["espeak"] }
@@ -53,6 +54,10 @@ dotenvy = "0.15"
 
 [features]
 default = []
+# GPU acceleration for Whisper STT (pick one based on your hardware)
+cuda = ["whisper-rs/cuda"]           # NVIDIA GPUs
+metal = ["whisper-rs/metal"]         # Apple Silicon
+vulkan = ["whisper-rs/vulkan"]       # Cross-platform (AMD/Intel/NVIDIA)
 server = ["dep:axum"]
 
 [badges]

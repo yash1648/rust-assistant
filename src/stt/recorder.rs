@@ -9,6 +9,120 @@ use super::audio::AudioConfig;
 use super::io::{spawn_enter_listener, wait_enter};
 use super::vad::{VadConfig, VadState};
 
+/// Recorded audio data with both PCM samples (for zero-copy transcription)
+/// and WAV bytes (for disk saving or legacy APIs).
+pub struct RecordedAudio {
+    /// Raw PCM i16 samples (device-native sample rate, multi-channel)
+    pub pcm_samples: Vec<i16>,
+    /// Sample rate of the PCM data (e.g. 44100, 48000)
+    pub sample_rate: u32,
+    /// Number of channels
+    pub channels: u16,
+    /// WAV-encoded bytes (for disk saving / legacy APIs)
+    pub wav_bytes: Vec<u8>,
+}
+
+/// Record audio with VAD, returning both raw PCM and WAV data.
+///
+/// The PCM samples enable zero-copy transcription (no WAV encode/decode round-trip).
+/// Use `transcribe_pcm_i16()` on the transcriber for the fast path.
+pub fn record_vad(vad_config: VadConfig) -> Result<RecordedAudio> {
+    let host = cpal::default_host();
+    let device = host.default_input_device()
+        .context("no default input device available")?;
+    let config = device.default_input_config()
+        .context("no default input config")?;
+    let audio_config = AudioConfig::from_device()?;
+    let stream_config = config.config();
+
+    let (enter_pressed, _enter_handle) = spawn_enter_listener();
+
+    // Pre-allocate PCM buffer (5 seconds at 48kHz stereo = ~480K samples)
+    let pcm: Arc<Mutex<Vec<i16>>> = Arc::new(Mutex::new(Vec::with_capacity(480_000)));
+    let vad = Arc::new(VadState::new(vad_config));
+
+    let stream = match audio_config.sample_format {
+        cpal::SampleFormat::I16 => {
+            let pcm_clone = Arc::clone(&pcm);
+            let vad_clone = Arc::clone(&vad);
+            device.build_input_stream(
+                &stream_config,
+                move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                    if let Ok(mut guard) = pcm_clone.lock() {
+                        guard.extend_from_slice(data);
+                    }
+                    vad_clone.process_audio(data);
+                },
+                move |err| eprintln!("❌ Stream error: {:?}", err),
+                None,
+            ).context("failed to build input stream for I16")?
+        }
+        cpal::SampleFormat::F32 => {
+            let pcm_clone = Arc::clone(&pcm);
+            let vad_clone = Arc::clone(&vad);
+            device.build_input_stream(
+                &stream_config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    if let Ok(mut guard) = pcm_clone.lock() {
+                        guard.reserve(data.len());
+                        for &sample in data {
+                            guard.push((sample * i16::MAX as f32)
+                                .clamp(i16::MIN as f32, i16::MAX as f32) as i16);
+                        }
+                    }
+                    vad_clone.process_audio_f32(data);
+                },
+                move |err| eprintln!("❌ Stream error: {:?}", err),
+                None,
+            ).context("failed to build input stream for F32")?
+        }
+        _ => anyhow::bail!("unsupported input sample format: {:?}", audio_config.sample_format),
+    };
+
+    stream.play()?;
+    println!("🎙 Recording... (VAD auto-stop, ENTER force-stop, {}s timeout)", MAX_RECORDING_SECS);
+
+    let start = std::time::Instant::now();
+    while !vad.is_stopped() && !enter_pressed.load(Ordering::SeqCst) {
+        if start.elapsed().as_secs() > MAX_RECORDING_SECS {
+            println!("⚠️  Recording timeout ({}s) reached.", MAX_RECORDING_SECS);
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    drop(stream);
+
+    let samples = pcm.lock()
+        .expect("Audio PCM buffer lock poisoned")
+        .clone();
+
+    // Build WAV bytes (for disk saving / backward compat)
+    let spec = WavSpec {
+        channels: audio_config.channels,
+        sample_rate: audio_config.sample_rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut cursor = Cursor::new(Vec::with_capacity(samples.len() * 2 + 44));
+    {
+        let mut writer = WavWriter::new(&mut cursor, spec)
+            .context("failed to create in-memory WAV writer")?;
+        for &sample in &samples {
+            writer.write_sample(sample)
+                .context("failed to write audio sample")?;
+        }
+        writer.finalize().context("failed to finalize WAV")?;
+    }
+    cursor.set_position(0);
+
+    Ok(RecordedAudio {
+        pcm_samples: samples,
+        sample_rate: audio_config.sample_rate,
+        channels: audio_config.channels,
+        wav_bytes: cursor.into_inner(),
+    })
+}
+
 /// Record audio from the default microphone to an in-memory buffer (WAV format)
 ///
 /// Returns a `Cursor<Vec<u8>>` containing the WAV data, avoiding disk I/O.

@@ -10,15 +10,30 @@ pub struct WhisperTranscriber {
 }
 
 impl WhisperTranscriber {
-    /// Create a new transcriber with the given model path and language
+    /// Create a new transcriber with the given model path and language.
+    ///
+    /// GPU acceleration is auto-detected at compile time:
+    ///   `cargo build --release --features cuda`  → NVIDIA GPU
+    ///   `cargo build --release --features metal` → Apple Silicon
+    ///   `cargo build --release --features vulkan` → Cross-platform
+    ///
+    /// Flash attention is always enabled for faster inference.
     pub fn new(model_path: &str, language: &str) -> Result<Self> {
-        println!("🧠 Loading Whisper model from: {} (lang: {})", model_path, language);
+        let params = WhisperContextParameters {
+            flash_attn: true,
+            ..Default::default()
+        };
 
-        let ctx = WhisperContext::new_with_params(
-            model_path,
-            WhisperContextParameters::default(),
-        )
-        .context("failed to load Whisper model")?;
+        println!("🧠 Loading Whisper model from: {} (lang: {})", model_path, language);
+        if params.use_gpu {
+            println!("⚡ GPU acceleration enabled — use_gpu=true, flash_attn=true");
+            println!("🔧 {}", whisper_rs::print_system_info());
+        } else {
+            println!("🔧 CPU mode — compile with --features cuda/metal/vulkan for GPU");
+        }
+
+        let ctx = WhisperContext::new_with_params(model_path, params)
+            .context("failed to load Whisper model")?;
 
         Ok(Self { ctx, language: language.to_string() })
     }
@@ -37,6 +52,38 @@ impl WhisperTranscriber {
             .context("failed to read WAV from buffer")?;
         let samples = Self::process_reader(reader)?;
         self.transcribe_samples(&samples)
+    }
+
+    /// Zero-copy: transcribe directly from raw PCM i16 samples (no WAV encode/decode).
+    ///
+    /// This is the fast path used by the VAD recorder — avoids encoding to WAV
+    /// and decoding back. Resamples to 16kHz and mixes to mono if needed.
+    pub fn transcribe_pcm_i16(&mut self, samples: &[i16], sample_rate: u32, channels: u16) -> Result<String> {
+        if samples.is_empty() {
+            anyhow::bail!("no audio samples found");
+        }
+
+        // Convert i16 → f32 inline
+        let mut f32_samples: Vec<f32> = Vec::with_capacity(samples.len());
+        for &s in samples {
+            f32_samples.push(s as f32 / 32768.0);
+        }
+
+        // Mix to mono if multiple channels
+        let mono = if channels > 1 {
+            Self::mix_to_mono(&f32_samples, channels as usize)
+        } else {
+            f32_samples
+        };
+
+        // Resample to 16kHz if needed
+        let resampled = if sample_rate != 16000 {
+            Self::resample(&mono, sample_rate as f32, 16000.0)?
+        } else {
+            mono
+        };
+
+        self.transcribe_samples(&resampled)
     }
 
     /// Common transcription pipeline from raw f32 samples

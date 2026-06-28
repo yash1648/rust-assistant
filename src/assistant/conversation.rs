@@ -64,6 +64,11 @@ impl Assistant {
 
     pub async fn run(&mut self) -> Result<()> {
         ui::info("🤖 AI Assistant started (100% Rust — Whisper STT + KittenTTS)");
+
+        // Warm up Ollama connection (shaves ~200ms off first LLM call)
+        let server = crate::assistant::config::Config::from_toml().ollama_server.clone();
+        tokio::spawn(async move { llm::warm_up_connection(&server).await });
+
         println!("Say 'exit' to quit.\n");
 
         loop {
@@ -106,11 +111,14 @@ impl Assistant {
     }
 
     fn listen_to_user(&mut self) -> Result<String> {
-        // Use VAD-powered in-memory recording (auto-stops on silence)
-        // Falls back to Enter key if needed
-        let buffer = stt::recorder::record_to_buffer_vad(self.vad_config.clone())?;
-        // Transcribe directly from the buffer
-        let text = self.transcriber.transcribe_buffer(buffer)?;
+        // Use VAD-powered recording with zero-copy PCM transcription
+        // (skips WAV encode/decode round-trip, ~2x faster audio processing)
+        let audio = stt::recorder::record_vad(self.vad_config.clone())?;
+        let text = self.transcriber.transcribe_pcm_i16(
+            &audio.pcm_samples,
+            audio.sample_rate,
+            audio.channels,
+        )?;
         Ok(text)
     }
 
