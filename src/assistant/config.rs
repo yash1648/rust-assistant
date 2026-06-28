@@ -27,6 +27,10 @@ pub struct Config {
     #[serde(default = "default_stt_language")]
     pub stt_language: String,
 
+    // Audio output device name (optional — uses system default if unset)
+    #[serde(default)]
+    pub output_device: Option<String>,
+
     // VAD settings
     #[serde(default = "default_vad_threshold")]
     pub vad_threshold: f32,
@@ -66,6 +70,7 @@ impl Config {
                     tts_speed: toml.tts.as_ref().and_then(|t| t.speed).unwrap_or_else(default_tts_speed),
                     stt_model_path: toml.stt.as_ref().and_then(|s| s.model_path.clone()).unwrap_or_else(default_stt_model_path),
                     stt_language: toml.stt.as_ref().and_then(|s| s.language.clone()).unwrap_or_else(default_stt_language),
+                    output_device: toml.audio.as_ref().and_then(|a| a.output_device.clone()),
                     vad_threshold: toml.vad.as_ref().and_then(|v| v.threshold).unwrap_or_else(default_vad_threshold),
                     vad_silence_ms: toml.vad.as_ref().and_then(|v| v.silence_ms).unwrap_or_else(default_vad_silence_ms),
                 },
@@ -79,6 +84,7 @@ impl Config {
                         tts_speed: default_tts_speed(),
                         stt_model_path: default_stt_model_path(),
                         stt_language: default_stt_language(),
+                        output_device: None,
                         vad_threshold: default_vad_threshold(),
                         vad_silence_ms: default_vad_silence_ms(),
                     }
@@ -93,6 +99,7 @@ impl Config {
                 tts_speed: default_tts_speed(),
                 stt_model_path: default_stt_model_path(),
                 stt_language: default_stt_language(),
+                output_device: None,
                 vad_threshold: default_vad_threshold(),
                 vad_silence_ms: default_vad_silence_ms(),
             }
@@ -106,6 +113,7 @@ impl Config {
         if let Ok(v) = env::var("TTS_SPEED") { config.tts_speed = v.parse().unwrap_or(1.0); }
         if let Ok(v) = env::var("STT_MODEL_PATH") { config.stt_model_path = v; }
         if let Ok(v) = env::var("STT_LANGUAGE") { config.stt_language = v; }
+        if let Ok(v) = env::var("AUDIO_OUTPUT_DEVICE") { config.output_device = Some(v); }
         if let Ok(v) = env::var("VAD_THRESHOLD") { config.vad_threshold = v.parse().unwrap_or(0.02); }
         if let Ok(v) = env::var("VAD_SILENCE_MS") { config.vad_silence_ms = v.parse().unwrap_or(800); }
 
@@ -124,6 +132,10 @@ impl Config {
         }
         println!("   TTS Speed: {}x", self.tts_speed);
         println!("   STT Model: {} (lang: {})", self.stt_model_path, self.stt_language);
+        match &self.output_device {
+            Some(d) => println!("   Audio Output: {} (configured)", d),
+            None => println!("   Audio Output: default system device"),
+        }
         println!("   VAD Threshold: {:.3}", self.vad_threshold);
         println!("   VAD Silence: {}ms", self.vad_silence_ms);
     }
@@ -140,6 +152,9 @@ struct TomlConfig {
 
     #[serde(default)]
     stt: Option<SttSection>,
+
+    #[serde(default)]
+    audio: Option<AudioSection>,
 
     #[serde(default)]
     vad: Option<VadSection>,
@@ -165,6 +180,11 @@ struct SttSection {
 }
 
 #[derive(Debug, Deserialize)]
+struct AudioSection {
+    output_device: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 struct VadSection {
     threshold: Option<f32>,
     silence_ms: Option<u64>,
@@ -179,6 +199,7 @@ pub mod env_vars {
     pub const TTS_SPEED: &str = "TTS_SPEED";
     pub const STT_MODEL_PATH: &str = "STT_MODEL_PATH";
     pub const STT_LANGUAGE: &str = "STT_LANGUAGE";
+    pub const AUDIO_OUTPUT_DEVICE: &str = "AUDIO_OUTPUT_DEVICE";
     pub const VAD_THRESHOLD: &str = "VAD_THRESHOLD";
     pub const VAD_SILENCE_MS: &str = "VAD_SILENCE_MS";
 }
@@ -193,6 +214,7 @@ pub fn print_env_help() {
     println!("   {} - TTS speech speed multiplier (0.5-2.0)", env_vars::TTS_SPEED);
     println!("   {} - Path to Whisper STT model", env_vars::STT_MODEL_PATH);
     println!("   {} - STT language (auto-detect or ISO code like en/fr/de)", env_vars::STT_LANGUAGE);
+    println!("   {} - Audio output device name (optional, lists devices with doctor)", env_vars::AUDIO_OUTPUT_DEVICE);
     println!("   {} - VAD energy threshold (0.0–1.0, default 0.02)", env_vars::VAD_THRESHOLD);
     println!("   {} - VAD silence timeout in ms (default 800)", env_vars::VAD_SILENCE_MS);
     println!();
@@ -218,7 +240,12 @@ speed = 1.0
 
 [stt]
 model_path = "models/ggml-tiny.en.bin"
-# Language for transcription (auto-detect, or "en"/"fr"/"de"/etc.)
+# Language for transcription (auto-detect, or "en"/"fr"/"de"/"ja"/etc.)
 # language = "auto"
+
+[audio]
+# Audio output device name (partial match, case-insensitive)
+# Run `cargo run doctor` to list available devices
+# output_device = "Speaker"
 "#.to_string()
 }

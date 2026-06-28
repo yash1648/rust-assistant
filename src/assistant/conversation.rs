@@ -98,8 +98,9 @@ impl Assistant {
         ui::info("🤖 AI Assistant — blazing fast (GPU + streaming)");
         println!("Say 'exit' to quit.\n");
 
-        // Pre-create playback sink (reused across turns for instant audio)
-        let (_play_stream, sink) = audio::playback::create_playback()?;
+        // Pre-create playback sink with configurable output device
+        let config = Config::from_toml();
+        let (_play_stream, sink) = audio::playback::create_playback(config.output_device.as_deref())?;
 
         loop {
             // ── Phase 1: Record (lock-free) ──

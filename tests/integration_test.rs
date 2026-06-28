@@ -149,6 +149,7 @@ fn test_env_var_names() {
     assert_eq!(env_vars::TTS_SPEED, "TTS_SPEED");
     assert_eq!(env_vars::STT_MODEL_PATH, "STT_MODEL_PATH");
     assert_eq!(env_vars::STT_LANGUAGE, "STT_LANGUAGE");
+    assert_eq!(env_vars::AUDIO_OUTPUT_DEVICE, "AUDIO_OUTPUT_DEVICE");
     assert_eq!(env_vars::VAD_THRESHOLD, "VAD_THRESHOLD");
     assert_eq!(env_vars::VAD_SILENCE_MS, "VAD_SILENCE_MS");
 }

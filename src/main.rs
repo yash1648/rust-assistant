@@ -199,11 +199,34 @@ fn doctor() {
     match cpal::default_host().default_output_device() {
         Some(dev) => {
             match dev.name() {
-                Ok(name) => println!("   ✅ Output device: {}", name),
+                Ok(name) => {
+                    println!("   ✅ Default output: {}", name);
+                    if let Some(cfg_name) = &config.output_device {
+                        if !name.to_lowercase().contains(&cfg_name.to_lowercase()) {
+                            println!("   ⚠️  Configured output '{}' does not match default", cfg_name);
+                            println!("      Run `cargo run doctor` with {} set for full device list.",
+                                env!("CARGO_BIN_NAME"));
+                        }
+                    }
+                }
                 Err(_) => println!("   ✅ Output device available"),
             }
         }
         None => println!("   ❌ No default output device found"),
+    }
+    // Show config output device
+    if let Some(dev) = &config.output_device {
+        println!("   🎯 Configured output: {}", dev);
+    }
+    // List all available output devices for reference
+    println!("   Available output devices:");
+    match audio::playback::list_output_devices() {
+        Ok(devices) => {
+            for (i, name) in devices.iter().enumerate() {
+                println!("      {}. {}", i + 1, name);
+            }
+        }
+        Err(e) => println!("      ❌ Failed to list devices: {}", e),
     }
 
     // Check config
