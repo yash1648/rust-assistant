@@ -5,3 +5,6 @@
 
 pub mod engine;
 pub use engine::TtsEngine;
+
+/// KittenTTS output sample rate (24 kHz)
+pub const SAMPLE_RATE: u32 = kittentts::SAMPLE_RATE;

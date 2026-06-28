@@ -27,6 +27,8 @@ pub mod stt;
 pub mod tts;
 pub mod ui;
 pub mod error;
+pub mod pipeline;
+pub mod audio;
 
 // Re-exports for convenience and testing
 pub use cli::{Cli, Commands, ShellKind};

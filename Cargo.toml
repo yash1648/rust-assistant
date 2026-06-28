@@ -27,7 +27,7 @@ overflow-checks = false
 
 [dependencies]
 anyhow = "1"
-reqwest = { version = "0.12", features = ["json", "blocking"] }
+reqwest = { version = "0.12", features = ["json", "blocking", "stream"] }
 rodio = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -47,6 +47,10 @@ whisper-rs = "0.16"
 tempfile = "3"
 # Pure Rust TTS — zero system dependencies, ONNX-based
 kittentts = { version = "0.4", features = ["espeak"] }
+# Lock-free audio transport (cpal callback → pipeline)
+crossbeam = "0.8"
+# Stream processing for LLM + TTS streaming
+futures = "0.3"
 # HTTP server for API mode
 axum = { version = "0.8", optional = true }
 # .env file auto-loading

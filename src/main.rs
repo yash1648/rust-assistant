@@ -15,6 +15,8 @@ mod stt;
 mod tts;
 mod ui;
 mod error;
+mod pipeline;
+mod audio;
 
 fn init_tracing(verbosity: u8) {
     let level = match verbosity { 0 => "info", 1 => "debug", _ => "trace" };
