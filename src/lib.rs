@@ -30,7 +30,7 @@ pub mod error;
 
 // Re-exports for convenience and testing
 pub use cli::{Cli, Commands, ShellKind};
-pub use assistant::config::{Config, env_vars, generate_default_toml, default_ollama_server, default_tts_voice, default_tts_speed};
+pub use assistant::config::{Config, env_vars, generate_default_toml, default_ollama_server, default_tts_voice, default_tts_speed, default_stt_language};
 pub use assistant::conversation::Message;
 pub use error::AssistantError;
 pub use stt::audio::AudioConfig;

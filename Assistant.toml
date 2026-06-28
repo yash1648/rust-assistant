@@ -15,4 +15,6 @@ voice = "Jasper"
 speed = 1.0
 
 [stt]
-model_path = "models/ggml-base.en.bin"
+model_path = "models/ggml-tiny.en.bin"
+# Language for transcription (auto-detect, or "en"/"fr"/"de"/"ja"/etc.)
+# language = "auto"

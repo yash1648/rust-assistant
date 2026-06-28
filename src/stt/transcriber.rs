@@ -6,12 +6,13 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 /// Pure Rust STT using whisper-rs
 pub struct WhisperTranscriber {
     ctx: WhisperContext,
+    language: String,
 }
 
 impl WhisperTranscriber {
-    /// Create a new transcriber with the given model path
-    pub fn new(model_path: &str) -> Result<Self> {
-        println!("🧠 Loading Whisper model from: {}", model_path);
+    /// Create a new transcriber with the given model path and language
+    pub fn new(model_path: &str, language: &str) -> Result<Self> {
+        println!("🧠 Loading Whisper model from: {} (lang: {})", model_path, language);
 
         let ctx = WhisperContext::new_with_params(
             model_path,
@@ -19,7 +20,7 @@ impl WhisperTranscriber {
         )
         .context("failed to load Whisper model")?;
 
-        Ok(Self { ctx })
+        Ok(Self { ctx, language: language.to_string() })
     }
 
     /// Transcribe audio from a WAV file path
@@ -47,14 +48,15 @@ impl WhisperTranscriber {
         let mut state = self.ctx.create_state()
             .context("failed to create Whisper state")?;
 
-        let mut params = FullParams::new(SamplingStrategy::BeamSearch {
-            beam_size: 5,
-            patience: -1.0,
-        });
-        params.set_language(Some("en"));
+        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        // "auto" → let Whisper detect, ISO code → force that language
+        if self.language != "auto" {
+            params.set_language(Some(&self.language));
+        }
         params.set_translate(false);
         params.set_no_context(true);
         params.set_single_segment(true);
+        params.set_suppress_blank(true);
 
         state
             .full(params, samples)

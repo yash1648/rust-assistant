@@ -37,7 +37,10 @@ impl Assistant {
         )?;
 
         pb.set_message("Initializing STT...");
-        let transcriber = stt::transcriber::WhisperTranscriber::new(&config.stt_model_path)?;
+        let transcriber = stt::transcriber::WhisperTranscriber::new(
+            &config.stt_model_path,
+            &config.stt_language,
+        )?;
 
         pb.finish_and_clear();
         ui::success("✅ Assistant ready!\n");

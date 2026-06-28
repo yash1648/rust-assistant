@@ -211,7 +211,7 @@ pub fn record_to_buffer_vad(vad_config: VadConfig) -> Result<Cursor<Vec<u8>>> {
             println!("⚠️  Recording timeout ({}s) reached.", MAX_RECORDING_SECS);
             break;
         }
-        std::thread::sleep(Duration::from_millis(50));
+        std::thread::sleep(Duration::from_millis(10));
     }
 
     drop(stream);
